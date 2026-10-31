@@ -41,3 +41,42 @@ run = "govulncheck ./..."
 [tasks.check]
 description = "Run the local quality gate"
 depends = ["fmt:check", "lint", "lint:actions", "cover", "vuln"]
+
+[tasks.sonar-issues]
+description = "List open SonarQube Cloud issues"
+usage = '''
+arg "[pr]" help="Pull request number; without it, the issues on main"
+'''
+shell = "bash -c"
+run = '''
+set -euo pipefail
+api="https://sonarcloud.io/api"
+key=$(sed -n 's/^sonar\.projectKey=//p' sonar-project.properties)
+target="project '${key}'"
+scope=""
+if [[ -n "${usage_pr+set}" ]]; then
+  if [[ ! "${usage_pr}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "error: pull request must be a positive integer, got '${usage_pr}'" >&2
+    exit 1
+  fi
+  target+=", pull request '${usage_pr}'"
+  scope="&pullRequest=${usage_pr}"
+fi
+
+if ! curl -sSf "${api}/components/show?component=${key}${scope}" >/dev/null; then
+  echo "error: cannot read SonarQube Cloud ${target}" >&2
+  exit 1
+fi
+
+curl -sSf "${api}/issues/search?componentKeys=${key}&resolved=false&ps=200${scope}" |
+  jq -r --arg key "${key}" '
+    [.issues[] | {
+      impacts: ([.impacts[] | "\(.softwareQuality):\(.severity)"] | sort | join(",")),
+      rule,
+      path: (.component | ltrimstr($key + ":")),
+      line: (.line // 0),
+      message
+    }]
+    | sort_by(.path, .line)[]
+    | "\(.impacts)\t\(.rule)\t\(.path)\tL\(.line)\t\(.message)"'
+'''
