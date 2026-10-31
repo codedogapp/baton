@@ -1,11 +1,43 @@
 [tools]
+"github:vladopajic/go-test-coverage" = "latest"
+go = "latest"
+"go:golang.org/x/vuln/cmd/govulncheck" = "latest"
+golangci-lint = "latest"
 jactionlint = "latest"
 shellcheck = "latest"
+
+[tasks.fmt]
+description = "Format the Go code (gofumpt, golines)"
+run = "golangci-lint fmt"
+
+[tasks."fmt:check"]
+description = "Fail if any Go file is not formatted"
+run = "golangci-lint fmt --diff"
+
+[tasks.lint]
+description = "Lint the Go code (golangci-lint)"
+run = [
+    "golangci-lint config verify",
+    "golangci-lint run",
+]
 
 [tasks."lint:actions"]
 description = "Lint the GitHub Actions workflows (jactionlint, shellcheck)"
 run = "jactionlint --shellcheck=shellcheck"
 
+[tasks.test]
+description = "Run the Go tests with the race detector and write coverage.out"
+run = "go test -race -coverprofile=coverage.out ./..."
+
+[tasks.cover]
+description = "Fail if test coverage is below the thresholds (go-test-coverage)"
+depends = ["test"]
+run = "go-test-coverage --config=.testcoverage.yml"
+
+[tasks.vuln]
+description = "Scan the dependencies for known vulnerabilities (govulncheck)"
+run = "govulncheck ./..."
+
 [tasks.check]
 description = "Run the local quality gate"
-depends = ["lint:actions"]
+depends = ["fmt:check", "lint", "lint:actions", "cover", "vuln"]
