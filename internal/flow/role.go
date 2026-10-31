@@ -14,8 +14,8 @@ const (
 	RoleReviewer     Role = "reviewer"
 )
 
-// known reports whether the role is one of the roles above.
-func (r Role) known() bool {
+// Known reports whether the role is one of the roles above.
+func (r Role) Known() bool {
 	switch r {
 	case RoleOrchestrator, RoleLead, RoleEngineer, RoleQA, RoleReviewer:
 		return true

@@ -129,7 +129,7 @@ func TestUpdateReportsAnEventItCantLog(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := store.Update(slug, logged(), hand(flow.Handover{From: flow.RoleLead}))
+	_, err := store.Update(slug, noted(flow.RoleLead, ""), hand(flow.Handover{From: flow.RoleLead}))
 	wantError(t, err, "feature demo-1 changed, but its event log didn't: ")
 
 	if got, err := store.Read(slug); err != nil || got.Flow.Holder != flow.RoleEngineer {

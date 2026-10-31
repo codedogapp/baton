@@ -38,6 +38,24 @@ func briefed() state.Entry {
 	}
 }
 
+// briefing returns the holder's work after the orchestrator's brief, the feature's first note.
+func briefing(holder flow.Role) state.Work {
+	return state.Work{
+		Note: "01-orchestrator-to-" + string(holder) + ".md",
+		From: flow.RoleOrchestrator,
+	}
+}
+
+// stored returns the new feature as Create stores it: with the brief as the lead's work.
+func stored(t *testing.T) state.Feature {
+	t.Helper()
+
+	feature := started(t)
+	feature.Work = briefing(flow.RoleLead)
+
+	return feature
+}
+
 // logged returns an entry with an event alone: the lead's handover, without a note.
 func logged() state.Entry {
 	return state.Entry{Event: state.Event{Kind: state.EventHandover, Role: flow.RoleLead}}

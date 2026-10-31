@@ -19,6 +19,17 @@ type Feature struct {
 	Slug string `json:"slug"`
 	// Flow is where the feature stands in the flow.
 	Flow flow.State `json:"flow"`
+	// Work is the holder's work: the last note, since each note goes to the holder after the
+	// change that brought it (decision 31).
+	Work Work `json:"work,omitzero"`
+}
+
+// Work is the note that the holder works from.
+type Work struct {
+	Note    string       `json:"note"`             // The note's name in the notes folder.
+	From    flow.Role    `json:"from"`             // The role that wrote it.
+	Verdict flow.Verdict `json:"verdict,omitzero"` // That role's verdict, if it gave one.
+	Picked  bool         `json:"picked"`           // Whether the holder's baton wait picked it up.
 }
 
 // check returns an error if the feature can't be the one in the folder of the slug.

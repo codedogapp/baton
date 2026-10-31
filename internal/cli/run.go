@@ -31,6 +31,7 @@ const usage = `Usage: baton <command> [flags]
 Commands:
   handover  hand the feature over to the next role, with a note
   status    list the repo's features, with their holder, round and status
+  wait      wait for the role's next work, then pick it up and print it
 
 Run baton <command> -h for the command's flags.
 `
@@ -54,6 +55,8 @@ func Run(ctx context.Context, env Env) int {
 		return exit(env.Stderr, name, handover(ctx, env, args))
 	case "status":
 		return exit(env.Stderr, name, status(ctx, env, args))
+	case "wait":
+		return exit(env.Stderr, name, wait(ctx, env, args))
 	case "help", "-h", "-help", "--help":
 		_, _ = fmt.Fprint(env.Stdout, usage)
 

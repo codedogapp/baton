@@ -16,8 +16,8 @@ func TestListReturnsTheFeaturesBySlug(t *testing.T) {
 		Holder: flow.RoleOrchestrator, Status: flow.StatusEscalated, Round: 4, Cap: 3, Extra: 1,
 	}
 	want := []state.Feature{
-		{Slug: "demo-1", Flow: started(t).Flow},
-		{Slug: "demo-2", Flow: escalated},
+		{Slug: "demo-1", Flow: started(t).Flow, Work: briefing(flow.RoleLead)},
+		{Slug: "demo-2", Flow: escalated, Work: briefing(flow.RoleOrchestrator)},
 	}
 
 	for _, feature := range slices.Backward(want) {

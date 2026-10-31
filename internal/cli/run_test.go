@@ -8,6 +8,7 @@ const usage = `Usage: baton <command> [flags]
 Commands:
   handover  hand the feature over to the next role, with a note
   status    list the repo's features, with their holder, round and status
+  wait      wait for the role's next work, then pick it up and print it
 
 Run baton <command> -h for the command's flags.
 `
@@ -43,6 +44,7 @@ func TestRunReportsTheUsage(t *testing.T) {
 			result{code: 2, stderr: "flag provided but not defined: -to\n" + handoverUsage},
 		},
 		{"with status's -h", []string{"status", "-h"}, result{stderr: "Usage of baton status:\n"}},
+		{"with wait's -h", []string{"wait", "-h"}, result{stderr: "Usage of baton wait:\n"}},
 		{
 			"with status's unknown flag",
 			[]string{"status", "--all"},

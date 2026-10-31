@@ -25,6 +25,7 @@ const (
 const (
 	EventStart    = "start"    // The orchestrator started the feature, with its brief to the lead.
 	EventHandover = "handover" // The holder handed the feature over, with a note.
+	EventPickup   = "pickup"   // The holder's baton wait picked up its work.
 )
 
 // Entry is what a change adds to the feature's journal: its event, and the note that came with
@@ -58,21 +59,22 @@ func (e Event) check() error {
 
 // commit writes the record and its entry, under the feature's lock: the note first, as a new file
 // that nothing names yet; then the record, which makes the change; then the event, so the log
-// never shows a change that didn't happen.
-func commit(root *os.Root, rec record, entry Entry) error {
+// never shows a change that didn't happen. The note becomes the holder's work.
+func commit(root *os.Root, rec *record, entry Entry) error {
 	event := entry.Event
 	event.Flow = rec.Flow
 
 	if len(entry.Note) > 0 {
-		name, err := keepNote(root, rec, entry)
+		name, err := keepNote(root, *rec, entry)
 		if err != nil {
 			return fmt.Errorf("keep the note of feature %s: %w", rec.Slug, err)
 		}
 
 		event.Note = name
+		rec.Work = Work{Note: name, From: event.Role, Verdict: event.Verdict}
 	}
 
-	if err := save(root, rec); err != nil {
+	if err := save(root, *rec); err != nil {
 		return err
 	}
 
