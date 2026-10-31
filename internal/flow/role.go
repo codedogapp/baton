@@ -14,6 +14,16 @@ const (
 	RoleReviewer     Role = "reviewer"
 )
 
+// known reports whether the role is one of the roles above.
+func (r Role) known() bool {
+	switch r {
+	case RoleOrchestrator, RoleLead, RoleEngineer, RoleQA, RoleReviewer:
+		return true
+	default:
+		return false
+	}
+}
+
 // judges reports whether the role hands over with a verdict on the engineer's work.
 func (r Role) judges() bool {
 	return r == RoleQA || r == RoleReviewer
