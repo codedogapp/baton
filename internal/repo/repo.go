@@ -14,7 +14,9 @@ import (
 // .git folder, which all the repo's worktrees share (fact 21). An empty folder stands for the
 // working folder.
 func CommonDir(ctx context.Context, dir string) (string, error) {
-	cmd := exec.CommandContext(
+	// Sonar's go:S4036 wants git at a fixed path, but baton runs the user's own git, found on the
+	// user's PATH as the user's shell finds it (decision 27).
+	cmd := exec.CommandContext( // NOSONAR
 		ctx,
 		"git",
 		"rev-parse",
