@@ -24,8 +24,9 @@ The first milestone is a walking skeleton (`skeleton`): one feature on a throwaw
 | Id | Step | Status |
 | --- | --- | --- |
 | `agent-wake` | Spike: wake-ups in an `--agent` session, a plugin's agent IDs, a plugin's hooks, the usage events (facts 3 to 10) | Done, findings in this plan |
-| `agents-md` | AGENTS.md, this plan and the README | In review |
-| `ci-baseline` | CI with mise, SonarQube Cloud and jactionlint; Renovate; the `main` ruleset and branch deletion on merge (decision 22) | Todo |
+| `agents-md` | AGENTS.md, this plan and the README | Done (#1) |
+| `ci-baseline` | CI with mise and jactionlint; Renovate's config; the `main` ruleset and branch deletion on merge (decisions 22 and 23) | In review (#2) |
+| `sonar` | SonarQube Cloud in CI, `mise run sonar-issues`, and the Sonar checks in the ruleset (decision 23) | Waits for the user (open question 2) |
 | `go-toolchain` | The Go module, golangci-lint with the gates, the coverage gate and `mise run check`, with the first package: `internal/flow`, the roles and who works next (decision 13) | Todo |
 | `state` | `internal/state`: a feature's state file, event log and notes under the git common directory, behind a lock (decision 15) | Todo |
 | `handover` | `baton handover` and `baton status`, with the role and the feature from the pane's environment | Todo |
@@ -186,7 +187,8 @@ Decisions marked **lead's call** are the lead's, for the user's end review. The 
 19. **The orchestrator can't write the code** (lead's call): the guard denies its `edit` and `create` outside baton's state (fact 15).
 20. **Cost from the session's own events** (lead's call): the last `session.usage_checkpoint` per role's session (fact 8), read while the feature runs; no extra flags.
 21. **Waits poll every second and compare wall-clock times** (lead's call): simple, and right after the Mac sleeps (fact 17). No file-watching dependency.
-22. **Branches are deleted on merge** (lead's call): like Bakhyard, unlike nudge, as the user asked when baton started.
+22. **Branches are deleted on merge** (lead's call): like Bakhyard, unlike nudge, as the user asked when baton started. The `main` ruleset is nudge's: no deletion, no force push, changes only through pull requests (no approvals needed), and the required checks; the wiki is off, as in nudge.
+23. **SonarQube Cloud joins CI in its own step** (lead's call): it needs a project and a `SONAR_TOKEN` secret that only the user can make (nudge's token is a secret of nudge's repo, not of the organisation). Until then, CI runs `mise run check` alone, the ruleset requires `check` alone, and the definition of done's SonarQube Cloud part waits. No job that skips itself without the token: a gate that can turn itself off would hide a lost secret later.
 
 ## 5. Risks
 
@@ -198,11 +200,12 @@ Decisions marked **lead's call** are the lead's, for the user's end review. The 
 6. **The user's own instructions apply in every pane**: Copilot CLI loads the user's and the repo's custom instructions, which may disagree with a role's prompt.
 7. **The CLI changes fast**: flags, tool names and event fields can change. The facts carry the version they were checked with; `live-run` repeats the checks.
 8. **Processes outlive an upgrade** (fact 17): a running `baton wait` or `baton pane` keeps the old binary, so the state's format carries a version and stays readable.
+9. **Floating tool versions**: mise tools use `latest` with no lockfile, so a new release (a new jactionlint rule, say) can turn CI red with no change in the repo, and a local run may use an older version than CI until `mise upgrade --local`. When CI turns red for no reason, check the tool versions first.
 
 ## 6. Open questions
 
 1. **Approvals when the user is away**: the guard's `ask` shows only in the orchestrator's pane. Should `baton deliver` also ask through nudge, so the user can approve from the phone? Until decided, outward actions wait for the user at the Mac.
-2. **Things only the user can do**: add the repo to the Renovate GitHub App; anything SonarQube Cloud needs beyond its API (`ci-baseline`); the Jira token and site (`jira`); the Bitbucket token and workspace (`deliver-bitbucket`).
+2. **Things only the user can do**: add the repo to the Renovate GitHub App; make the SonarQube Cloud project, with automatic analysis off, and the repo's `SONAR_TOKEN` secret (asked through nudge on 2026-10-31, for step `sonar`); the Jira token and site (`jira`); the Bitbucket token and workspace (`deliver-bitbucket`).
 
 ## 7. Sources
 
