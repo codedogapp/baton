@@ -26,8 +26,10 @@ func TestNewSessionEndsASessionThatItCannotFill(t *testing.T) {
 	err = srv.NewSession(t.Context(), tmux.Session{
 		Name: "full", Dir: dir, Panes: []tmux.Pane{pane("lead"), pane("engineer"), pane("qa")},
 	})
-	if want := "make the tmux session full: tmux split-window: no space for a new pane"; err == nil ||
-		err.Error() != want {
+
+	// tmux 3.7c puts "size or position" before the reason (fact 22).
+	want := "make the tmux session full: tmux split-window: no space for a new pane"
+	if err == nil || strings.Replace(err.Error(), "size or position ", "", 1) != want {
 		t.Errorf("NewSession = %v; want %s", err, want)
 	}
 
