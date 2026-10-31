@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,17 +15,12 @@ import (
 // handover hands the pane's feature over from its role to the next one, with a note: the next
 // role's work. QA and the reviewer give their verdict.
 func handover(ctx context.Context, env Env, args []string) error {
-	flags := flag.NewFlagSet("baton handover", flag.ContinueOnError)
-	flags.SetOutput(env.Stderr)
+	flags := newFlags(env, "handover")
 	notePath := flags.String("note", "", "the `file` with the note for the next role (required)")
 	verdict := flags.String("verdict", "", "QA's or the reviewer's `verdict`: approve or reject")
 
-	if err := flags.Parse(args); err != nil {
-		return usageError{err}
-	}
-
-	if flags.NArg() > 0 {
-		return fmt.Errorf("unexpected argument %q", flags.Arg(0))
+	if err := parse(flags, args); err != nil {
+		return err
 	}
 
 	role, slug, err := pane(env.Getenv)

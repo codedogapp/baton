@@ -69,6 +69,52 @@ func (s Store) Read(slug string) (Feature, error) {
 	return rec.Feature, nil
 }
 
+// List returns the features in baton's folder, by slug. Like Read, it takes no lock. It skips
+// what isn't a feature's folder, and the folder of a feature that Create hasn't written yet
+// (decision 30).
+func (s Store) List() ([]Feature, error) {
+	root, err := os.OpenRoot(s.Dir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("open baton's folder: %w", err)
+	}
+
+	defer func() { _ = root.Close() }()
+
+	entries, err := fs.ReadDir(root.FS(), featuresFolder)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("list the features: %w", err)
+	}
+
+	var features []Feature
+
+	for _, entry := range entries {
+		if !entry.IsDir() || checkSlug(entry.Name()) != nil {
+			continue
+		}
+
+		rec, err := load(root, entry.Name())
+		if errors.Is(err, errNoFeature) {
+			continue
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		features = append(features, rec.Feature)
+	}
+
+	return features, nil
+}
+
 // Update changes the feature with the slug under its lock, so no other change comes between its
 // read and its write, adds the entry to its journal, and returns the feature as changed. The
 // change gets the feature as its file holds it, once checked. Nothing is written when the change

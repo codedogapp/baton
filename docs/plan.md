@@ -33,8 +33,8 @@ The first milestone is a walking skeleton (`skeleton`): one feature on a throwaw
 | `store` | `internal/state`, writing: a new feature and its changes, under the feature's lock, each in a new file renamed over the old one, keeping the fields that a newer baton added (decision 24) | Done (#8) |
 | `journal` | The feature's event log and notes, written with each change under its lock (decision 26) | Done (#9) |
 | `repo` | `repo.CommonDir`: the repo's git common folder, which all its worktrees share, for baton's folder (fact 21) | Done (#10) |
-| `handover` | `baton handover`: the role and the feature from the pane's environment (decision 29), the note and the verdict from its flags, and baton's folder under the git common directory (fact 21); the command line (decision 28) | In review (#11) |
-| `status` | `baton status`: the repo's features, each with its holder, its round and its status | Todo |
+| `handover` | `baton handover`: the role and the feature from the pane's environment (decision 29), the note and the verdict from its flags, and baton's folder under the git common directory (fact 21); the command line (decision 28) | Done (#11) |
+| `status` | `baton status`: the repo's features, each with its holder, its round and its status (decision 30) | In review (#12) |
 | `wait` | `baton wait`: blocks until the role has work, then prints it and records the pickup (decision 12) | Todo |
 | `tmux` | `internal/tmux`: sessions, panes, titles and options on a chosen socket, tested on `-L baton-test-<n>`; tmux through mise (fact 11) | Todo |
 | `worktree` | `internal/worktree`: the feature's branch and its worktree next to the repo | Todo |
@@ -205,6 +205,7 @@ Decisions marked **lead's call** are the lead's, for the user's end review. The 
 27. **baton runs the user's own git, tmux, Copilot CLI and gh, found on the user's `PATH`** (the user's call, 2026-10-31), as the user's shell does. Sonar's go:S4036 ("OS commands should not rely on PATH resolution") wants fixed paths, which would miss the tools that Homebrew and mise install, and Go already refuses a program found in a relative folder of the `PATH` (`exec.ErrDot`). The one place that runs each tool carries `//NOSONAR`, with the reason next to it.
 28. **The command line uses the standard library's `flag` package, a flag set per command** (lead's call): no dependency for a handful of commands. The `main` package only wires the process (its arguments, environment, working folder, output and Ctrl-C) to `internal/cli`. A command that baton refuses, or that fails, prints its reason and exits with 1; a command line that doesn't parse prints the usage and exits with 2.
 29. **A role's pane names its role and its feature** (lead's call): `baton pane` sets `BATON_ROLE` and `BATON_FEATURE`, and `baton handover`, `wait` and `ask` read them there, not from flags, so a role can't act for another role or feature by a slip of a flag. It's a convention, not a boundary: a shell can set them, and the flow checks only that the role holds the feature.
+30. **`baton status` lists every feature, or fails** (lead's call). It lists the folders in `features/` by slug, and skips what isn't a feature's folder, and a feature's folder that Create hasn't written the file into yet. A feature's file that baton can't read or check fails the whole list, with the file's path in the error, rather than leaving the feature out of the list and out of mind.
 
 ## 5. Risks
 

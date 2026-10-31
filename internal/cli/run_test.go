@@ -7,6 +7,7 @@ const usage = `Usage: baton <command> [flags]
 
 Commands:
   handover  hand the feature over to the next role, with a note
+  status    list the repo's features, with their holder, round and status
 
 Run baton <command> -h for the command's flags.
 `
@@ -40,6 +41,15 @@ func TestRunReportsTheUsage(t *testing.T) {
 			"with a command's unknown flag",
 			[]string{"handover", "--to", "qa"},
 			result{code: 2, stderr: "flag provided but not defined: -to\n" + handoverUsage},
+		},
+		{"with status's -h", []string{"status", "-h"}, result{stderr: "Usage of baton status:\n"}},
+		{
+			"with status's unknown flag",
+			[]string{"status", "--all"},
+			result{
+				code:   2,
+				stderr: "flag provided but not defined: -all\nUsage of baton status:\n",
+			},
 		},
 	}
 
