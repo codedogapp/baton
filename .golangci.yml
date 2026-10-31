@@ -1,0 +1,107 @@
+version: "2"
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  uniq-by-line: false
+
+linters:
+  enable:
+    - errorlint
+    - nilerr
+    - unconvert
+    - unparam
+    - misspell
+    - gocyclo
+    - gocognit
+    - funlen
+    - dupl
+    - gosec
+    - nolintlint
+    - modernize
+    - gocritic
+    - perfsprint
+    - exhaustive
+    - usestdlibvars
+    - mnd
+    - varnamelen
+    - recvcheck
+    - revive
+    - wsl_v5
+  settings:
+    revive:
+      directives:
+        - name: specify-disable-reason
+        - name: specify-disable-rule
+      rules:
+        - name: confusing-results
+        - name: early-return
+        - name: error-strings
+        - name: import-shadowing
+        - name: indent-error-flow
+        - name: modifies-value-receiver
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: unused-receiver
+        - name: file-length-limit
+          arguments:
+            - max: 200
+              skip-comments: true
+              skip-blank-lines: true
+        - name: max-control-nesting
+          arguments: [3]
+        - name: argument-limit
+          arguments: [4]
+        - name: function-result-limit
+          arguments: [3]
+        - name: package-naming
+          arguments:
+            # revive's extra bad names without api, which AGENTS.md allows.
+            - user-defined-bad-names: [helpers, miscellaneous, models, shared, utilities]
+    funlen:
+      lines: 50
+      statements: 30
+    gocognit:
+      min-complexity: 15
+    gocyclo:
+      min-complexity: 10
+    dupl:
+      threshold: 100
+    gosec:
+      config:
+        global:
+          # Ignore #nosec comments, so every suppression is a checked //nolint.
+          nosec: true
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    exhaustive:
+      default-signifies-exhaustive: true
+    mnd:
+      ignored-numbers: ["2", "0.5"]
+    varnamelen:
+      ignore-names: [ok]
+      ignore-decls:
+        - t *testing.T
+        - w http.ResponseWriter
+        - r *http.Request
+  exclusions:
+    rules:
+      # AGENTS.md exempts tests from these two gates only.
+      - path: _test\.go
+        linters:
+          - funlen
+          - dupl
+
+formatters:
+  enable:
+    - gofumpt
+    - golines
+  settings:
+    golines:
+      max-len: 100
+      tab-len: 4
+      shorten-comments: false
+      reformat-tags: true
+      chain-split-dots: true

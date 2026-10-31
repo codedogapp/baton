@@ -25,10 +25,10 @@ The first milestone is a walking skeleton (`skeleton`): one feature on a throwaw
 | --- | --- | --- |
 | `agent-wake` | Spike: wake-ups in an `--agent` session, a plugin's agent IDs, a plugin's hooks, the usage events (facts 3 to 10) | Done, findings in this plan |
 | `agents-md` | AGENTS.md, this plan and the README | Done (#1) |
-| `ci-baseline` | CI with mise and jactionlint; Renovate's config; the `main` ruleset and branch deletion on merge (decisions 22 and 23) | In review (#2) |
+| `ci-baseline` | CI with mise and jactionlint; Renovate's config; the `main` ruleset and branch deletion on merge (decisions 22 and 23) | Done (#2) |
 | `sonar` | SonarQube Cloud in CI, `mise run sonar-issues`, and the Sonar checks in the ruleset (decision 23) | Waits for the user (open question 2) |
-| `go-toolchain` | The Go module, golangci-lint with the gates, the coverage gate and `mise run check`, with the first package: `internal/flow`, the roles and who works next (decision 13) | Todo |
-| `state` | `internal/state`: a feature's state file, event log and notes under the git common directory, behind a lock (decision 15) | Todo |
+| `go-toolchain` | The Go module, golangci-lint with the gates, the coverage gate and `mise run check`, with the first package: `internal/flow`, the roles and who works next (decision 13) | In review (#3) |
+| `state` | `internal/state`: a feature's state file, event log and notes under the git common directory, behind a lock, and checked when read, since `internal/flow` trusts the state it gets (decision 15) | Todo |
 | `handover` | `baton handover` and `baton status`, with the role and the feature from the pane's environment | Todo |
 | `wait` | `baton wait`: blocks until the role has work, then prints it and records the pickup (decision 12) | Todo |
 | `tmux` | `internal/tmux`: sessions, panes, titles and options on a chosen socket, tested on `-L baton-test-<n>`; tmux through mise (fact 11) | Todo |
@@ -124,7 +124,7 @@ flowchart LR
 - the reviewer approves to the lead, or rejects to the engineer;
 - the lead commits on the feature's branch and hands the final report to the orchestrator, and the feature is ready.
 
-A round is one pass of the engineer. A rejection starts the next round, with the rejecting note attached. The third rejection doesn't go to the engineer: the feature is escalated, and the orchestrator gets it and asks the user. On the user's word, the orchestrator hands it back to the engineer for one more round, or to the lead with a new brief, or closes it. QA and the reviewer must hand over with `--verdict approve|reject`; their note gives the evidence (the commands they ran and what came out, each criterion checked) and, for a rejection, the findings, each marked blocking or non-blocking.
+A round is one pass of the engineer. A rejection starts the next round, with the rejecting note attached. The third rejection doesn't go to the engineer: the feature is escalated, and the orchestrator gets it and asks the user. On the user's word, the orchestrator hands it back to the engineer for one more round, or to the lead with a new brief, or closes it. A new brief starts the rounds again. QA and the reviewer must hand over with `--verdict approve|reject`; their note gives the evidence (the commands they ran and what came out, each criterion checked) and, for a rejection, the findings, each marked blocking or non-blocking.
 
 **The final handover is the user's.** When a feature is ready, the orchestrator tells the user its branch, the lead's report and the open findings. The user decides: deliver it (`baton deliver` pushes the branch and opens the pull request), send it back with changes (a new brief to the lead, and the round count starts again), or close it.
 
