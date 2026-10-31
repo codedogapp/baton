@@ -28,8 +28,8 @@ The first milestone is a walking skeleton (`skeleton`): one feature on a throwaw
 | `ci-baseline` | CI with mise and jactionlint; Renovate's config; the `main` ruleset and branch deletion on merge (decisions 22 and 23) | Done (#2) |
 | `sonar` | SonarQube Cloud in CI, `mise run sonar-issues`, and the Sonar checks in the ruleset (decision 23) | Done (#5) |
 | `go-toolchain` | The Go module, golangci-lint with the gates, the coverage gate and `mise run check`, with the first package: `internal/flow`, the roles and who works next (decision 13) | Done (#4) |
-| `validate` | `flow.State.Validate`: whether `Start` and `Next` can make a state, so that a state read from disk gets checked; the state's names in JSON | In review (#6) |
-| `state` | `internal/state`, reading: a feature's file in baton's folder, with its format, checked when read, since `internal/flow` trusts the state it gets (decision 15) | Todo |
+| `validate` | `flow.State.Validate`: whether `Start` and `Next` can make a state, so that a state read from disk gets checked; the state's names in JSON | Done (#6) |
+| `state` | `internal/state`, reading: a feature's file in baton's folder, with its format and slug (decisions 24 and 25), checked when read, since `internal/flow` trusts the state it gets (decision 15) | In review (#7) |
 | `store` | `internal/state`, writing: a new feature and its changes, under the feature's lock, each in a new file renamed over the old one | Todo |
 | `journal` | The feature's event log and notes, written under its lock | Todo |
 | `handover` | `baton handover` and `baton status`, with the role and the feature from the pane's environment, and baton's folder under the git common directory | Todo |
@@ -151,7 +151,7 @@ with `BATON_ROLE` and `BATON_FEATURE` in its environment. baton keeps each role'
 
 **State** (decision 15). Everything lives in `$(git rev-parse --git-common-dir)/baton/`, which every worktree of the repo shares and git never commits:
 
-- `features/<slug>/feature.json`: the slug, the branch and worktree, the holder, the round and its cap, the status (`running`, `escalated`, `ready`, `delivered`, `closed`), each role's session ID, and the notes not yet delivered;
+- `features/<slug>/feature.json`: its format (decision 24), the slug (decision 25), the branch and worktree, the holder, the round and its cap, the status (`running`, `escalated`, `ready`, `delivered`, `closed`), each role's session ID, and the notes not yet delivered;
 - `features/<slug>/events.ndjson`: one JSON line per event (start, handover, pickup, question, answer, escalation, push and pull request), with its time;
 - `features/<slug>/notes/`: the briefs, the handover notes and the final report;
 - `questions/<id>.json`: open questions and their answers.
@@ -193,6 +193,8 @@ Decisions marked **lead's call** are the lead's, for the user's end review. The 
 21. **Waits poll every second and compare wall-clock times** (lead's call): simple, and right after the Mac sleeps (fact 17). No file-watching dependency.
 22. **Branches are deleted on merge** (lead's call): like Bakhyard, unlike nudge, as the user asked when baton started. The `main` ruleset is nudge's: no deletion, no force push, changes only through pull requests (no approvals needed), and the required checks; the wiki is off, as in nudge.
 23. **SonarQube Cloud joined CI in its own step** (lead's call): it needed a project and a `SONAR_TOKEN` secret that only the user could make (nudge's token is a secret of nudge's repo, not of the organisation), and the user made them on 2026-10-31. Until then, CI ran `mise run check` alone. No job that skips itself without the token: a gate that can turn itself off would hide a lost secret later.
+24. **The feature's file carries its format** (lead's call), a number that changes only when an older baton would misread the new layout. baton reads the format first and refuses a newer one with "run the newer baton", since a `baton wait` or `baton pane` can outlive an upgrade (risk 8). A new field at the top of the file keeps the format: an older baton ignores it and, when it writes the file, keeps it.
+25. **A slug is lowercase words of letters and digits, joined by hyphens** (lead's call), such as `demo-1`: it names the feature's folder, branch and tmux session, and is safe in all three.
 
 ## 5. Risks
 
@@ -203,7 +205,7 @@ Decisions marked **lead's call** are the lead's, for the user's end review. The 
 5. **AI credits**: four Opus sessions per feature, three of them in every round, plus the orchestrator. The per-role cap (`--max-ai-credits`, decision 16) and `baton status` keep it visible; the round cap bounds it.
 6. **The user's own instructions apply in every pane**: Copilot CLI loads the user's and the repo's custom instructions, which may disagree with a role's prompt.
 7. **The CLI changes fast**: flags, tool names and event fields can change. The facts carry the version they were checked with; `live-run` repeats the checks.
-8. **Processes outlive an upgrade** (fact 17): a running `baton wait` or `baton pane` keeps the old binary, so the state's format carries a version and stays readable.
+8. **Processes outlive an upgrade** (fact 17): a running `baton wait` or `baton pane` keeps the old binary, so the feature's file carries its format, and an older baton refuses a newer format and keeps the fields it doesn't know (decision 24).
 9. **Floating tool versions**: mise tools use `latest` with no lockfile, so a new release (a new jactionlint rule, say) can turn CI red with no change in the repo, and a local run may use an older version than CI until `mise upgrade --local`. When CI turns red for no reason, check the tool versions first.
 
 ## 6. Open questions
