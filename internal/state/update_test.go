@@ -32,13 +32,18 @@ func hand(handover flow.Handover) func(*state.Feature) error {
 func TestUpdateWritesTheChange(t *testing.T) {
 	store := created(t)
 
-	got, err := store.Update(slug, logged(), hand(flow.Handover{From: flow.RoleLead}))
+	got, err := store.Update(
+		slug,
+		noted(flow.RoleLead, ""),
+		hand(flow.Handover{From: flow.RoleLead}),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	want := started(t)
 	want.Flow.Holder, want.Flow.Round = flow.RoleEngineer, 1
+	want.Work = state.Work{Note: "02-lead-to-engineer.md", From: flow.RoleLead}
 
 	if got != want {
 		t.Errorf("Update = %+v, want %+v", got, want)
@@ -122,7 +127,7 @@ func TestUpdateKeepsTheFieldsItDoesntKnow(t *testing.T) {
 
 	if _, err := store.Update(
 		slug,
-		logged(),
+		noted(flow.RoleLead, ""),
 		hand(flow.Handover{From: flow.RoleLead}),
 	); err != nil {
 		t.Fatal(err)

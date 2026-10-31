@@ -50,7 +50,7 @@ func Start(roundCap int) (State, error) {
 // damaged file.
 func (s State) Validate() error {
 	switch {
-	case !s.Holder.known():
+	case !s.Holder.Known():
 		return fmt.Errorf("unknown holder %q", s.Holder)
 	case !s.Status.known():
 		return fmt.Errorf("unknown status %q", s.Status)

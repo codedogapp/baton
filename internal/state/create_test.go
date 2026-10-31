@@ -21,6 +21,11 @@ func TestCreateWritesTheFeatureFile(t *testing.T) {
     "round": 0,
     "cap": 3,
     "extra": 0
+  },
+  "work": {
+    "note": "01-orchestrator-to-lead.md",
+    "from": "orchestrator",
+    "picked": false
   }
 }
 `
@@ -62,7 +67,7 @@ func TestReadReturnsTheCreatedFeature(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if want := started(t); got != want {
+	if want := stored(t); got != want {
 		t.Errorf("Read = %+v, want %+v", got, want)
 	}
 }

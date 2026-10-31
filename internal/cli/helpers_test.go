@@ -1,6 +1,7 @@
 package cli_test
 
 import (
+	"context"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -98,9 +99,14 @@ type result struct {
 func run(t *testing.T, dir string, env map[string]string, args ...string) result {
 	t.Helper()
 
+	return runUntil(t.Context(), dir, env, args...)
+}
+
+// runUntil runs baton like run, until the context ends.
+func runUntil(ctx context.Context, dir string, env map[string]string, args ...string) result {
 	var stdout, stderr strings.Builder
 
-	code := cli.Run(t.Context(), cli.Env{
+	code := cli.Run(ctx, cli.Env{
 		Args:   args,
 		Getenv: func(name string) string { return env[name] },
 		Dir:    dir,

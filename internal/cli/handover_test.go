@@ -194,7 +194,7 @@ type logged struct {
 	note  string
 }
 
-// wantJournal checks the feature's events, in order, and their notes.
+// wantJournal checks the feature's events, in order, and their notes, if any.
 func wantJournal(t *testing.T, store state.Store, want []logged) {
 	t.Helper()
 
@@ -213,9 +213,12 @@ func wantJournal(t *testing.T, store state.Store, want []logged) {
 			t.Fatal(err)
 		}
 
-		note, err := os.ReadFile(filepath.Clean(filepath.Join(folder, "notes", event.Note)))
-		if err != nil {
-			t.Fatal(err)
+		var note []byte
+		if event.Note != "" {
+			note, err = os.ReadFile(filepath.Clean(filepath.Join(folder, "notes", event.Note)))
+			if err != nil {
+				t.Fatal(err)
+			}
 		}
 
 		got = append(got, logged{
