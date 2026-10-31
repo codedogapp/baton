@@ -1,0 +1,6 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "baton",
+  "description": "The roles that baton runs in Copilot CLI: the lead, the engineer, QA and the reviewer.",
+  "repository": "https://github.com/codedogapp/baton"
+}
