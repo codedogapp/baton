@@ -17,12 +17,16 @@ import (
 const slug = "demo-1"
 
 // repos makes a git repo with a commit, and a linked worktree next to it, like a feature's. It
-// returns the folders of the main worktree and of the linked one. git runs without the user's
-// config.
+// returns the folders of the main worktree and of the linked one, with symlinks resolved, as git
+// gives them (fact 21). git runs without the user's config.
 func repos(t *testing.T) (mainDir, linked string) {
 	t.Helper()
 
-	dir := t.TempDir()
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	mainDir, linked = filepath.Join(dir, "main"), filepath.Join(dir, "linked")
 
 	if err := os.Mkdir(mainDir, 0o700); err != nil {
@@ -53,22 +57,29 @@ func fresh() flow.State {
 	return flow.State{Holder: flow.RoleLead, Status: flow.StatusRunning, Cap: 3}
 }
 
-// started stores the feature, where it stands in the flow, in baton's folder of the repo, and
-// returns the store.
+// started stores the feature demo-1, where it stands in the flow, in baton's folder of the repo,
+// and returns the store.
 func started(t *testing.T, mainDir string, now flow.State) state.Store {
 	t.Helper()
 
 	store := state.Store{Dir: filepath.Join(mainDir, ".git", "baton")}
+	add(t, store, state.Feature{Slug: slug, Flow: now})
+
+	return store
+}
+
+// add stores the new feature, with the orchestrator's brief.
+func add(t *testing.T, store state.Store, feature state.Feature) {
+	t.Helper()
+
 	entry := state.Entry{
 		Event: state.Event{Kind: state.EventStart, Role: flow.RoleOrchestrator},
 		Note:  []byte("Build the demo.\n"),
 	}
 
-	if err := store.Create(state.Feature{Slug: slug, Flow: now}, entry); err != nil {
+	if err := store.Create(feature, entry); err != nil {
 		t.Fatal(err)
 	}
-
-	return store
 }
 
 // paneOf returns the environment of the role's pane in the feature.

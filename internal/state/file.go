@@ -38,9 +38,12 @@ func folder(slug string) string {
 	return filepath.Join(featuresFolder, slug)
 }
 
+// errNoFeature is the error of a feature that baton's folder doesn't hold.
+var errNoFeature = errors.New("no feature")
+
 // noFeature reports that baton's folder holds no feature with the slug.
 func noFeature(slug string) error {
-	return fmt.Errorf("no feature %s", slug)
+	return fmt.Errorf("%w %s", errNoFeature, slug)
 }
 
 // load reads the feature's file and checks it.

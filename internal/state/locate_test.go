@@ -73,8 +73,10 @@ func TestTheStoreReportsAFolderItCantUse(t *testing.T) {
 	store := state.Store{Dir: file}
 	_, readErr := store.Read(slug)
 	_, updateErr := store.Update(slug, logged(), keep)
+	_, listErr := store.List()
 
 	wantError(t, store.Create(started(t), briefed()), "make the folder of feature demo-1: ")
 	wantError(t, readErr, "open baton's folder: ")
 	wantError(t, updateErr, "open baton's folder: ")
+	wantError(t, listErr, "open baton's folder: ")
 }

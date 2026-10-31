@@ -30,6 +30,7 @@ const usage = `Usage: baton <command> [flags]
 
 Commands:
   handover  hand the feature over to the next role, with a note
+  status    list the repo's features, with their holder, round and status
 
 Run baton <command> -h for the command's flags.
 `
@@ -51,6 +52,8 @@ func Run(ctx context.Context, env Env) int {
 	switch name, args := env.Args[0], env.Args[1:]; name {
 	case "handover":
 		return exit(env.Stderr, name, handover(ctx, env, args))
+	case "status":
+		return exit(env.Stderr, name, status(ctx, env, args))
 	case "help", "-h", "-help", "--help":
 		_, _ = fmt.Fprint(env.Stdout, usage)
 
@@ -60,6 +63,27 @@ func Run(ctx context.Context, env Env) int {
 
 		return exitUsage
 	}
+}
+
+// newFlags returns the command's flag set, which reports its errors and its usage on stderr.
+func newFlags(env Env, name string) *flag.FlagSet {
+	flags := flag.NewFlagSet("baton "+name, flag.ContinueOnError)
+	flags.SetOutput(env.Stderr)
+
+	return flags
+}
+
+// parse parses the command's flags, and refuses any argument after them.
+func parse(flags *flag.FlagSet, args []string) error {
+	if err := flags.Parse(args); err != nil {
+		return usageError{err}
+	}
+
+	if flags.NArg() > 0 {
+		return fmt.Errorf("unexpected argument %q", flags.Arg(0))
+	}
+
+	return nil
 }
 
 // exit reports the command's error, if any, and returns the process's exit code.
