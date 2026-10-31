@@ -26,8 +26,8 @@ The first milestone is a walking skeleton (`skeleton`): one feature on a throwaw
 | `agent-wake` | Spike: wake-ups in an `--agent` session, a plugin's agent IDs, a plugin's hooks, the usage events (facts 3 to 10) | Done, findings in this plan |
 | `agents-md` | AGENTS.md, this plan and the README | Done (#1) |
 | `ci-baseline` | CI with mise and jactionlint; Renovate's config; the `main` ruleset and branch deletion on merge (decisions 22 and 23) | Done (#2) |
-| `sonar` | SonarQube Cloud in CI, `mise run sonar-issues`, and the Sonar checks in the ruleset (decision 23) | Waits for the user (open question 2) |
-| `go-toolchain` | The Go module, golangci-lint with the gates, the coverage gate and `mise run check`, with the first package: `internal/flow`, the roles and who works next (decision 13) | In review (#4) |
+| `sonar` | SonarQube Cloud in CI, `mise run sonar-issues`, and the Sonar checks in the ruleset (decision 23) | In review (#5) |
+| `go-toolchain` | The Go module, golangci-lint with the gates, the coverage gate and `mise run check`, with the first package: `internal/flow`, the roles and who works next (decision 13) | Done (#4) |
 | `state` | `internal/state`: a feature's state file, event log and notes under the git common directory, behind a lock, and checked when read, since `internal/flow` trusts the state it gets (decision 15) | Todo |
 | `handover` | `baton handover` and `baton status`, with the role and the feature from the pane's environment | Todo |
 | `wait` | `baton wait`: blocks until the role has work, then prints it and records the pickup (decision 12) | Todo |
@@ -188,7 +188,7 @@ Decisions marked **lead's call** are the lead's, for the user's end review. The 
 20. **Cost from the session's own events** (lead's call): the last `session.usage_checkpoint` per role's session (fact 8), read while the feature runs; no extra flags.
 21. **Waits poll every second and compare wall-clock times** (lead's call): simple, and right after the Mac sleeps (fact 17). No file-watching dependency.
 22. **Branches are deleted on merge** (lead's call): like Bakhyard, unlike nudge, as the user asked when baton started. The `main` ruleset is nudge's: no deletion, no force push, changes only through pull requests (no approvals needed), and the required checks; the wiki is off, as in nudge.
-23. **SonarQube Cloud joins CI in its own step** (lead's call): it needs a project and a `SONAR_TOKEN` secret that only the user can make (nudge's token is a secret of nudge's repo, not of the organisation). Until then, CI runs `mise run check` alone, the ruleset requires `check` alone, and the definition of done's SonarQube Cloud part waits. No job that skips itself without the token: a gate that can turn itself off would hide a lost secret later.
+23. **SonarQube Cloud joined CI in its own step** (lead's call): it needed a project and a `SONAR_TOKEN` secret that only the user could make (nudge's token is a secret of nudge's repo, not of the organisation), and the user made them on 2026-10-31. Until then, CI ran `mise run check` alone. No job that skips itself without the token: a gate that can turn itself off would hide a lost secret later.
 
 ## 5. Risks
 
@@ -205,7 +205,7 @@ Decisions marked **lead's call** are the lead's, for the user's end review. The 
 ## 6. Open questions
 
 1. **Approvals when the user is away**: the guard's `ask` shows only in the orchestrator's pane. Should `baton deliver` also ask through nudge, so the user can approve from the phone? Until decided, outward actions wait for the user at the Mac.
-2. **Things only the user can do**: add the repo to the Renovate GitHub App; make the SonarQube Cloud project, with automatic analysis off, and the repo's `SONAR_TOKEN` secret (asked through nudge on 2026-10-31, for step `sonar`); the Jira token and site (`jira`); the Bitbucket token and workspace (`deliver-bitbucket`).
+2. **Things only the user can do**: the Jira token and site (`jira`); the Bitbucket token and workspace (`deliver-bitbucket`). Done on 2026-10-31: the Renovate GitHub App, and the SonarQube Cloud project with its `SONAR_TOKEN` (`sonar`).
 
 ## 7. Sources
 
