@@ -1,4 +1,6 @@
 [tools]
+# CI's runner has no tmux; on a Mac, tmux stays the user's own (decision 33).
+"aqua:tmux/tmux-builds" = { version = "latest", os = ["linux"] }
 "github:vladopajic/go-test-coverage" = "latest"
 go = "latest"
 "go:golang.org/x/vuln/cmd/govulncheck" = "latest"
