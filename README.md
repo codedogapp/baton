@@ -8,6 +8,6 @@ You talk to one agent, the orchestrator. It reads the ticket, plans the work as 
 
 ## Requirements
 
-- macOS, git and tmux.
+- macOS, git 2.31 or newer, and tmux.
 - [GitHub Copilot CLI](https://docs.github.com/copilot/how-tos/copilot-cli).
 - `gh` for GitHub pull requests; a Bitbucket Cloud API token for Bitbucket pull requests; a read-only Jira API token for Jira tickets.

@@ -31,7 +31,8 @@ The first milestone is a walking skeleton (`skeleton`): one feature on a throwaw
 | `validate` | `flow.State.Validate`: whether `Start` and `Next` can make a state, so that a state read from disk gets checked; the state's names in JSON | Done (#6) |
 | `state` | `internal/state`, reading: a feature's file in baton's folder, with its format and slug (decisions 24 and 25), checked when read, since `internal/flow` trusts the state it gets (decision 15) | Done (#7) |
 | `store` | `internal/state`, writing: a new feature and its changes, under the feature's lock, each in a new file renamed over the old one, keeping the fields that a newer baton added (decision 24) | Done (#8) |
-| `journal` | The feature's event log and notes, written with each change under its lock (decision 26) | In review (#9) |
+| `journal` | The feature's event log and notes, written with each change under its lock (decision 26) | Done (#9) |
+| `repo` | `repo.CommonDir`: the repo's git common folder, which all its worktrees share, for baton's folder (fact 21) | In review (#10) |
 | `handover` | `baton handover` and `baton status`, with the role and the feature from the pane's environment, and baton's folder under the git common directory | Todo |
 | `wait` | `baton wait`: blocks until the role has work, then prints it and records the pickup (decision 12) | Todo |
 | `tmux` | `internal/tmux`: sessions, panes, titles and options on a chosen socket, tested on `-L baton-test-<n>`; tmux through mise (fact 11) | Todo |
@@ -104,6 +105,7 @@ Checked on 2026-10-31 with Copilot CLI 1.0.105 and tmux 3.8, unless a fact says 
 18. **SonarQube Cloud.** A new project's first analysis of `main` sets the new code's baseline and computes no quality gate (status `NONE`). The scan action, which waits for the gate, reports that as a failure; a rerun passes.
 19. **macOS's `openat(2)`** (macOS 26.4.1, Go 1.27.3). With `O_CREAT` but not `O_EXCL`, it sometimes fails with "no such file or directory" while other openers make the same file in the same folder: with 20 openers at a time, 355 to 791 of 4,000 opens failed, with or without `O_NOFOLLOW`. `open(2)` with the file's full path never failed, nor did `O_CREAT|O_EXCL` followed, on "file exists", by an open without `O_CREAT` (0 of 4,000 each). `os.Root` opens files with `openat`, so baton makes its lock file with `O_EXCL`.
 20. **`encoding/json/v2`** (Go 1.27.3) says "cannot" or "unable to" in its errors, picked at random once per process, so tests match the rest of the message.
+21. **`git rev-parse --path-format=absolute --git-common-dir`** (git 2.56.0; the option came in git 2.31) prints the main worktree's `.git` folder from the main worktree, from its subfolders and from its linked worktrees, with symlinks resolved (`/private/var/…` for `/var/…` on a Mac). Outside a repo, it fails with exit code 128 and "not a git repository".
 
 ## 3. Design
 

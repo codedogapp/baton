@@ -1,0 +1,36 @@
+// Package repo finds the git repo that baton works in.
+package repo
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"os/exec"
+	"strings"
+)
+
+// CommonDir returns the git common folder of the repo that holds the folder: the main worktree's
+// .git folder, which all the repo's worktrees share (fact 21). An empty folder stands for the
+// working folder.
+func CommonDir(ctx context.Context, dir string) (string, error) {
+	cmd := exec.CommandContext(
+		ctx,
+		"git",
+		"rev-parse",
+		"--path-format=absolute",
+		"--git-common-dir",
+	)
+	cmd.Dir = dir
+
+	out, err := cmd.Output()
+	if exit, ok := errors.AsType[*exec.ExitError](err); ok && len(exit.Stderr) > 0 {
+		return "", fmt.Errorf("find the git repo: %s", bytes.TrimSpace(exit.Stderr))
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("find the git repo: %w", err)
+	}
+
+	return strings.TrimSuffix(string(out), "\n"), nil
+}
