@@ -10,6 +10,9 @@ import (
 	"path/filepath"
 )
 
+// endOfOptions makes git take what follows as names, even one that starts with a dash (fact 23).
+const endOfOptions = "--end-of-options"
+
 // Worktree is a feature's worktree to make.
 type Worktree struct {
 	// Path is the absolute path of the worktree's folder, which mustn't exist yet.
@@ -29,12 +32,12 @@ func (wt Worktree) Add(ctx context.Context, dir string) error {
 		return err
 	}
 
-	_, err := git(ctx, dir, "branch", "--no-track", "--end-of-options", wt.Branch, wt.Base)
+	_, err := git(ctx, dir, "branch", "--no-track", endOfOptions, wt.Branch, wt.Base)
 	if err != nil {
 		return fmt.Errorf("make the branch %s: %w", wt.Branch, err)
 	}
 
-	_, err = git(ctx, dir, "worktree", "add", "--quiet", "--end-of-options", wt.Path, wt.Branch)
+	_, err = git(ctx, dir, "worktree", "add", "--quiet", endOfOptions, wt.Path, wt.Branch)
 	if err != nil {
 		// The undo runs even after a stop, once git's child that checks out has ended: until
 		// then, it holds git's stderr (fact 23).
@@ -61,17 +64,16 @@ func (wt Worktree) check() error {
 }
 
 // undo removes the worktree, unless git didn't get as far as its folder, and deletes the branch.
-// A worktree that git was checking out when it stopped is locked, and only a second --force
+// A worktree that git was checking out when it stopped is locked, and only a second -f (--force)
 // removes it (fact 23).
 func (wt Worktree) undo(ctx context.Context, dir string) error {
 	var removed error
 
 	if _, err := os.Lstat(wt.Path); !errors.Is(err, fs.ErrNotExist) {
-		_, removed = git(ctx, dir, "worktree", "remove", "--force", "--force", "--end-of-options",
-			wt.Path)
+		_, removed = git(ctx, dir, "worktree", "remove", "-f", "-f", endOfOptions, wt.Path)
 	}
 
-	_, deleted := git(ctx, dir, "branch", "--delete", "--force", "--end-of-options", wt.Branch)
+	_, deleted := git(ctx, dir, "branch", "-D", endOfOptions, wt.Branch)
 
 	return errors.Join(removed, deleted)
 }
