@@ -14,11 +14,16 @@ type Store struct {
 	Dir string
 }
 
-// Create stores a new feature. It fails if the slug is taken.
-func (s Store) Create(feature Feature) error {
+// Create stores a new feature, with its first entry in its journal. It fails if the slug is
+// taken.
+func (s Store) Create(feature Feature, entry Entry) error {
 	slug := feature.Slug
 	if err := checkSlug(slug); err != nil {
 		return err
+	}
+
+	if err := entry.Event.check(); err != nil {
+		return fmt.Errorf("new feature %s: %w", slug, err)
 	}
 
 	if err := feature.check(slug); err != nil {
@@ -44,7 +49,7 @@ func (s Store) Create(feature Feature) error {
 		return fmt.Errorf("look for feature %s: %w", slug, err)
 	}
 
-	return save(root, record{Feature: feature})
+	return commit(root, record{Feature: feature}, entry)
 }
 
 // Read returns the feature with the slug, once checked. It takes no lock: a change renames a
@@ -65,10 +70,15 @@ func (s Store) Read(slug string) (Feature, error) {
 }
 
 // Update changes the feature with the slug under its lock, so no other change comes between its
-// read and its write, and returns the feature as changed. The change gets the feature as its file
-// holds it, once checked. Nothing is written when the change fails or leaves an invalid feature.
-// The fields of the file that this baton doesn't know stay as they are.
-func (s Store) Update(slug string, change func(*Feature) error) (Feature, error) {
+// read and its write, adds the entry to its journal, and returns the feature as changed. The
+// change gets the feature as its file holds it, once checked. Nothing is written when the change
+// fails or leaves an invalid feature. The fields of the file that this baton doesn't know stay as
+// they are.
+func (s Store) Update(slug string, entry Entry, change func(*Feature) error) (Feature, error) {
+	if err := entry.Event.check(); err != nil {
+		return Feature{}, fmt.Errorf("change feature %s: %w", slug, err)
+	}
+
 	root, done, err := s.locked(slug)
 	if err != nil {
 		return Feature{}, err
@@ -88,7 +98,7 @@ func (s Store) Update(slug string, change func(*Feature) error) (Feature, error)
 		return Feature{}, fmt.Errorf("the change leaves feature %s invalid: %w", slug, err)
 	}
 
-	if err := save(root, rec); err != nil {
+	if err := commit(root, rec, entry); err != nil {
 		return Feature{}, err
 	}
 
