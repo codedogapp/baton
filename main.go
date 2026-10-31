@@ -17,8 +17,10 @@ func main() {
 	code := cli.Run(ctx, cli.Env{
 		Args:   os.Args[1:],
 		Getenv: os.Getenv,
+		Stdin:  os.Stdin,
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
+		Exec:   syscall.Exec,
 	})
 
 	stop()

@@ -15,8 +15,12 @@ type Env struct {
 	Args   []string            // The arguments after baton's name: the command, then its own.
 	Getenv func(string) string // Reads the process's environment.
 	Dir    string              // The working folder; empty for the process's own.
+	Stdin  io.Reader           // The pane's terminal, which baton pane reads while it waits.
 	Stdout io.Writer
 	Stderr io.Writer
+	// Exec replaces the process with the program at the path, as syscall.Exec does, so it
+	// returns only if it fails.
+	Exec func(path string, args, env []string) error
 }
 
 // The exit codes of a command that didn't run to its end.
@@ -30,6 +34,7 @@ const usage = `Usage: baton <command> [flags]
 
 Commands:
   handover  hand the feature over to the next role, with a note
+  pane      wait for the role's first work, then become the role's copilot
   status    list the repo's features, with their holder, round and status
   wait      wait for the role's next work, then pick it up and print it
 
@@ -53,6 +58,8 @@ func Run(ctx context.Context, env Env) int {
 	switch name, args := env.Args[0], env.Args[1:]; name {
 	case "handover":
 		return exit(env.Stderr, name, handover(ctx, env, args))
+	case "pane":
+		return exit(env.Stderr, name, pane(ctx, env, args))
 	case "status":
 		return exit(env.Stderr, name, status(ctx, env, args))
 	case "wait":

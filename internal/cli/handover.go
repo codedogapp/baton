@@ -23,7 +23,7 @@ func handover(ctx context.Context, env Env, args []string) error {
 		return err
 	}
 
-	role, slug, err := pane(env.Getenv)
+	role, slug, err := fromPane(env.Getenv)
 	if err != nil {
 		return err
 	}
