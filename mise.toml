@@ -1,0 +1,11 @@
+[tools]
+jactionlint = "latest"
+shellcheck = "latest"
+
+[tasks."lint:actions"]
+description = "Lint the GitHub Actions workflows (jactionlint, shellcheck)"
+run = "jactionlint --shellcheck=shellcheck"
+
+[tasks.check]
+description = "Run the local quality gate"
+depends = ["lint:actions"]
