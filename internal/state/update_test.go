@@ -32,7 +32,7 @@ func hand(handover flow.Handover) func(*state.Feature) error {
 func TestUpdateWritesTheChange(t *testing.T) {
 	store := created(t)
 
-	got, err := store.Update(slug, hand(flow.Handover{From: flow.RoleLead}))
+	got, err := store.Update(slug, logged(), hand(flow.Handover{From: flow.RoleLead}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestUpdateWritesNothingWhenTheChangeFails(t *testing.T) {
 			store := created(t)
 			before := read(t, featureFile(store))
 
-			got, err := store.Update(slug, test.change)
+			got, err := store.Update(slug, noted(flow.RoleLead, ""), test.change)
 			wantError(t, err, test.want)
 
 			if got != (state.Feature{}) {
@@ -96,10 +96,16 @@ func TestUpdateWritesNothingWhenTheChangeFails(t *testing.T) {
 			if after := read(t, featureFile(store)); after != before {
 				t.Errorf("the feature file holds\n%s\nwant it unchanged:\n%s", after, before)
 			}
+
+			if logged := events(t, store); len(logged) != 1 {
+				t.Errorf("the log holds %+v, want the start alone", logged)
+			}
+
+			wantNotes(t, store, "01-orchestrator-to-lead.md")
 		})
 	}
 
-	_, err := created(t).Update(slug, func(*state.Feature) error { return refused })
+	_, err := created(t).Update(slug, logged(), func(*state.Feature) error { return refused })
 	if !errors.Is(err, refused) {
 		t.Errorf("Update error = %v, want the change's error", err)
 	}
@@ -114,7 +120,11 @@ func TestUpdateKeepsTheFieldsItDoesntKnow(t *testing.T) {
   "sessions": {"lead": "1"}
 }`)
 
-	if _, err := store.Update(slug, hand(flow.Handover{From: flow.RoleLead})); err != nil {
+	if _, err := store.Update(
+		slug,
+		logged(),
+		hand(flow.Handover{From: flow.RoleLead}),
+	); err != nil {
 		t.Fatal(err)
 	}
 
@@ -138,7 +148,7 @@ func TestUpdateLosesNoChange(t *testing.T) {
 	var workers sync.WaitGroup
 	for range changes {
 		workers.Go(func() {
-			if _, err := store.Update(slug, count); err != nil {
+			if _, err := store.Update(slug, logged(), count); err != nil {
 				t.Error(err)
 			}
 		})
@@ -158,5 +168,17 @@ func TestUpdateLosesNoChange(t *testing.T) {
 
 	if want := started(t).Flow.Cap + changes; got.Flow.Cap != want {
 		t.Errorf("after %d changes, the cap is %d, want %d", changes, got.Flow.Cap, want)
+	}
+
+	logged := events(t, store)
+	if len(logged) != changes+1 {
+		t.Fatalf("the log holds %d events, want %d", len(logged), changes+1)
+	}
+
+	for i, event := range logged {
+		if want := started(t).Flow.Cap + i; event.Flow.Cap != want {
+			t.Errorf("event %d has cap %d, want %d: the log's order isn't the changes'", i+1,
+				event.Flow.Cap, want)
+		}
 	}
 }

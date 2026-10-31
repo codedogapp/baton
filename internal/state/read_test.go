@@ -85,7 +85,7 @@ func TestReadAndUpdateRefuseAnInvalidFile(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			store := holding(t, test.content)
 			_, readErr := store.Read(slug)
-			_, updateErr := store.Update(slug, keep)
+			_, updateErr := store.Update(slug, logged(), keep)
 
 			for _, err := range []error{readErr, updateErr} {
 				wantError(t, err, "feature file "+featureFile(store)+": ")

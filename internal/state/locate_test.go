@@ -21,10 +21,10 @@ func TestTheStoreRefusesABadSlug(t *testing.T) {
 		feature := started(t)
 		feature.Slug = bad
 		_, readErr := store.Read(bad)
-		_, updateErr := store.Update(bad, keep)
+		_, updateErr := store.Update(bad, logged(), keep)
 
 		errs := map[string]error{
-			"Create": store.Create(feature),
+			"Create": store.Create(feature, briefed()),
 			"Read":   readErr,
 			"Update": updateErr,
 		}
@@ -56,7 +56,7 @@ func TestReadAndUpdateReportAMissingFeature(t *testing.T) {
 
 	for name, store := range stores {
 		_, readErr := store.Read(slug)
-		_, updateErr := store.Update(slug, keep)
+		_, updateErr := store.Update(slug, logged(), keep)
 
 		for call, err := range map[string]error{"Read": readErr, "Update": updateErr} {
 			if err == nil || err.Error() != "no feature demo-1" {
@@ -72,9 +72,9 @@ func TestTheStoreReportsAFolderItCantUse(t *testing.T) {
 
 	store := state.Store{Dir: file}
 	_, readErr := store.Read(slug)
-	_, updateErr := store.Update(slug, keep)
+	_, updateErr := store.Update(slug, logged(), keep)
 
-	wantError(t, store.Create(started(t)), "make the folder of feature demo-1: ")
+	wantError(t, store.Create(started(t), briefed()), "make the folder of feature demo-1: ")
 	wantError(t, readErr, "open baton's folder: ")
 	wantError(t, updateErr, "open baton's folder: ")
 }

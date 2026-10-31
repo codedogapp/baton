@@ -34,11 +34,14 @@ func TestCreateKeepsTheStateToTheUser(t *testing.T) {
 	folder := filepath.Dir(featureFile(store))
 
 	modes := map[string]fs.FileMode{
-		store.Dir:                     0o700,
-		filepath.Dir(folder):          0o700,
-		folder:                        0o700,
-		featureFile(store):            0o600,
-		filepath.Join(folder, "lock"): 0o600,
+		store.Dir:                      0o700,
+		filepath.Dir(folder):           0o700,
+		folder:                         0o700,
+		featureFile(store):             0o600,
+		filepath.Join(folder, "lock"):  0o600,
+		filepath.Join(folder, "notes"): 0o700,
+		filepath.Join(folder, "notes", "01-orchestrator-to-lead.md"): 0o600,
+		filepath.Join(folder, "events.ndjson"):                       0o600,
 	}
 
 	for path, want := range modes {
@@ -68,11 +71,13 @@ func TestCreateRefusesATakenSlug(t *testing.T) {
 	store := created(t)
 	before := read(t, featureFile(store))
 
-	wantError(t, store.Create(started(t)), "feature demo-1 exists")
+	wantError(t, store.Create(started(t), briefed()), "feature demo-1 exists")
 
-	if after := read(t, featureFile(store)); after != before {
+	if after := read(t, featureFile(store)); after != before || len(events(t, store)) != 1 {
 		t.Errorf("the feature file holds\n%s\nwant it unchanged:\n%s", after, before)
 	}
+
+	wantNotes(t, store, "01-orchestrator-to-lead.md")
 }
 
 func TestCreateHasOneWinner(t *testing.T) {
@@ -85,7 +90,7 @@ func TestCreateHasOneWinner(t *testing.T) {
 	var workers sync.WaitGroup
 	for range tries {
 		workers.Go(func() {
-			err := store.Create(feature)
+			err := store.Create(feature, briefed())
 			if err != nil && !strings.Contains(err.Error(), "feature demo-1 exists") {
 				t.Error(err)
 			}
@@ -108,12 +113,18 @@ func TestCreateHasOneWinner(t *testing.T) {
 	if wins != 1 {
 		t.Errorf("%d of %d Creates won, want 1", wins, tries)
 	}
+
+	if logged := events(t, store); len(logged) != 1 {
+		t.Errorf("the log holds %+v, want one start", logged)
+	}
+
+	wantNotes(t, store, "01-orchestrator-to-lead.md")
 }
 
 func TestCreateRefusesAnInvalidFeature(t *testing.T) {
 	store := state.Store{Dir: t.TempDir()}
 
-	wantError(t, store.Create(state.Feature{Slug: slug}),
+	wantError(t, store.Create(state.Feature{Slug: slug}, briefed()),
 		`new feature demo-1: flow: unknown holder ""`)
 	wantNothingIn(t, store.Dir)
 }
