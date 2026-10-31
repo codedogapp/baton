@@ -27,7 +27,7 @@ The first milestone is a walking skeleton (`skeleton`): one feature on a throwaw
 | `agents-md` | AGENTS.md, this plan and the README | Done (#1) |
 | `ci-baseline` | CI with mise and jactionlint; Renovate's config; the `main` ruleset and branch deletion on merge (decisions 22 and 23) | Done (#2) |
 | `sonar` | SonarQube Cloud in CI, `mise run sonar-issues`, and the Sonar checks in the ruleset (decision 23) | Waits for the user (open question 2) |
-| `go-toolchain` | The Go module, golangci-lint with the gates, the coverage gate and `mise run check`, with the first package: `internal/flow`, the roles and who works next (decision 13) | In review (#3) |
+| `go-toolchain` | The Go module, golangci-lint with the gates, the coverage gate and `mise run check`, with the first package: `internal/flow`, the roles and who works next (decision 13) | In review (#4) |
 | `state` | `internal/state`: a feature's state file, event log and notes under the git common directory, behind a lock, and checked when read, since `internal/flow` trusts the state it gets (decision 15) | Todo |
 | `handover` | `baton handover` and `baton status`, with the role and the feature from the pane's environment | Todo |
 | `wait` | `baton wait`: blocks until the role has work, then prints it and records the pickup (decision 12) | Todo |
