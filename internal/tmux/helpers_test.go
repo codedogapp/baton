@@ -23,14 +23,15 @@ const role = `printf '%s|%s\n' "$(pwd -P)" "${BATON_TMUX_TEST-unset}"; read -r _
 // sockets numbers the tests' tmux servers.
 var sockets atomic.Int64
 
-// TestMain keeps the tests off the user's tmux server: the tests' servers keep their sockets in a
-// folder of their own, and no TMUX names the user's server.
+// TestMain keeps the tests off the user's tmux server, and away from the user's files: the tests'
+// servers keep their sockets in a folder of their own, which is their home folder too, and no
+// TMUX names the user's server.
 func TestMain(m *testing.M) {
 	// macOS limits a socket's path to 104 bytes, and $TMPDIR there leaves too few of them.
 	dir, err := os.MkdirTemp("/tmp", "baton-tmux-")
 	if err == nil {
-		err = errors.Join(os.Setenv("TMUX_TMPDIR", dir), os.Unsetenv("TMUX"),
-			os.Unsetenv("TMUX_PANE"))
+		err = errors.Join(os.Setenv("TMUX_TMPDIR", dir), os.Setenv("HOME", dir),
+			os.Unsetenv("XDG_CONFIG_HOME"), os.Unsetenv("TMUX"), os.Unsetenv("TMUX_PANE"))
 	}
 
 	code := 1

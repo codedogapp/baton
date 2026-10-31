@@ -164,6 +164,36 @@ func (s Store) Update(slug string, entry Entry, change func(*Feature) error) (Fe
 	return rec.Feature, nil
 }
 
+// Remove removes the feature with the slug, under its lock: its file first, which ends the
+// feature, then its event log and its notes. It keeps the lock file, which baton never replaces,
+// so a process that waits for the lock finds no feature once it gets it, and a new feature can
+// take the slug (decision 40).
+func (s Store) Remove(slug string) error {
+	root, done, err := s.locked(slug)
+	if err != nil {
+		return err
+	}
+	defer done()
+
+	dir := folder(slug)
+
+	err = root.Remove(filepath.Join(dir, featureFile))
+	if errors.Is(err, fs.ErrNotExist) {
+		return noFeature(slug)
+	}
+
+	if err == nil {
+		err = errors.Join(root.RemoveAll(filepath.Join(dir, eventsFile)),
+			root.RemoveAll(filepath.Join(dir, notesFolder)))
+	}
+
+	if err != nil {
+		return fmt.Errorf("remove feature %s: %w", slug, err)
+	}
+
+	return nil
+}
+
 // NotePath returns the path of the feature's note with the name.
 func (s Store) NotePath(slug, name string) string {
 	return filepath.Join(s.Dir, folder(slug), notesFolder, name)

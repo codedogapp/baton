@@ -27,6 +27,7 @@ func TestTheStoreRefusesABadSlug(t *testing.T) {
 			"Create": store.Create(feature, briefed()),
 			"Read":   readErr,
 			"Update": updateErr,
+			"Remove": store.Remove(bad),
 		}
 		for call, err := range errs {
 			want := fmt.Sprintf("slug %q: want words of lowercase letters and digits", bad)
@@ -39,7 +40,7 @@ func TestTheStoreRefusesABadSlug(t *testing.T) {
 	wantNothingIn(t, store.Dir)
 }
 
-func TestReadAndUpdateReportAMissingFeature(t *testing.T) {
+func TestTheStoreReportsAMissingFeature(t *testing.T) {
 	other := t.TempDir()
 	writeFile(t, filepath.Join(other, "features", "demo-2", "feature.json"), "{}")
 
@@ -57,8 +58,9 @@ func TestReadAndUpdateReportAMissingFeature(t *testing.T) {
 	for name, store := range stores {
 		_, readErr := store.Read(slug)
 		_, updateErr := store.Update(slug, logged(), keep)
+		errs := map[string]error{"Read": readErr, "Update": updateErr, "Remove": store.Remove(slug)}
 
-		for call, err := range map[string]error{"Read": readErr, "Update": updateErr} {
+		for call, err := range errs {
 			if err == nil || err.Error() != "no feature demo-1" {
 				t.Errorf("%s: %s error = %v, want no feature demo-1", name, call, err)
 			}
@@ -79,4 +81,5 @@ func TestTheStoreReportsAFolderItCantUse(t *testing.T) {
 	wantError(t, readErr, "open baton's folder: ")
 	wantError(t, updateErr, "open baton's folder: ")
 	wantError(t, listErr, "open baton's folder: ")
+	wantError(t, store.Remove(slug), "open baton's folder: ")
 }

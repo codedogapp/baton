@@ -94,3 +94,32 @@ esac
 		t.Errorf("Add = %q; want %q", got, want)
 	}
 }
+
+// TestWorktreeUndoRemovesWhatAddMade undoes a locked worktree with changes in it, on a branch
+// that no other branch has merged, which only a forced removal and a forced delete undo.
+func TestWorktreeUndoRemovesWhatAddMade(t *testing.T) {
+	mainDir, _ := repos(t)
+	path := filepath.Join(filepath.Dir(mainDir), "main-demo-1")
+	before := state(t, mainDir, path)
+
+	worktree := repo.Worktree{Path: path, Branch: "demo-1", Base: "HEAD"}
+	if err := worktree.Add(t.Context(), mainDir); err != nil {
+		t.Fatal(err)
+	}
+
+	run(t, path, "commit", "--quiet", "--allow-empty", "--message", "Ahead")
+
+	if err := os.WriteFile(filepath.Join(path, "new.txt"), []byte("new\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	run(t, mainDir, "worktree", "lock", path)
+
+	if err := worktree.Undo(t.Context(), mainDir); err != nil {
+		t.Fatal(err)
+	}
+
+	if after := state(t, mainDir, path); after != before {
+		t.Errorf("Undo left\n%s\nwant\n%s", after, before)
+	}
+}

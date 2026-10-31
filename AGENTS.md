@@ -86,7 +86,7 @@ Never report a step as done before `mise run check` has passed, and say which ga
 ## Tests and live checks
 
 - **No model calls in tests.** Unit and integration tests run a stand-in `copilot` (a script on `PATH`), never the real one.
-- **tmux on its own socket.** Tests run tmux with `-L baton-test-<n>` and a config of their own (`-f`), in a `TMUX_TMPDIR` of their own and without `TMUX`, so a slip can't reach the user's server, and they kill only their servers. Live checks use `-L baton-live`. Never kill the user's tmux server, and never touch a session or window that baton didn't create.
+- **tmux on its own socket.** Every tmux server that a test, a smoke run or a live check starts gets a config file of its own (`-f /dev/null`, or a file of the test's), so the user's `~/.tmux.conf` and its plugins never load, and runs without `TMUX` and `TMUX_PANE` (`env -u TMUX -u TMUX_PANE`), so a slip can't reach the user's server. Tests run tmux with `-L baton-test-<n>`, in a `TMUX_TMPDIR` and a `HOME` of their own, and kill only their servers. Smoke runs and live checks use a socket of their own, such as `-L baton-live`. Never kill the user's tmux server, and never touch a session or window that baton didn't create.
 - **Copilot CLI config stays untouched.** Develop with `--plugin-dir`, flags or a throwaway `COPILOT_HOME`, never by changing `~/.copilot/`.
 - **Live checks are rare and small**: a throwaway repo in the spikes folder, the cheapest model that can do the job, and a `--max-ai-credits` cap (30 at least, the CLI's minimum). The PR records each live check's cost.
 

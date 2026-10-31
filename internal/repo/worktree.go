@@ -41,7 +41,7 @@ func (wt Worktree) Add(ctx context.Context, dir string) error {
 	if err != nil {
 		// The undo runs even after a stop, once git's child that checks out has ended: until
 		// then, it holds git's stderr (fact 23).
-		err = errors.Join(err, wt.undo(context.WithoutCancel(ctx), dir))
+		err = errors.Join(err, wt.Undo(context.WithoutCancel(ctx), dir))
 
 		return fmt.Errorf("make the worktree %s: %w", wt.Path, err)
 	}
@@ -63,10 +63,11 @@ func (wt Worktree) check() error {
 	return nil
 }
 
-// undo removes the worktree, unless git didn't get as far as its folder, and deletes the branch.
-// A worktree that git was checking out when it stopped is locked, and only a second -f (--force)
-// removes it (fact 23).
-func (wt Worktree) undo(ctx context.Context, dir string) error {
+// Undo undoes Add, as Add does when it fails: it removes the worktree, with any changes in it,
+// unless git didn't get as far as its folder, and deletes the branch, even if no other branch has
+// merged it. It reports what it couldn't undo. A worktree that git was checking out when it
+// stopped is locked, and only a second -f (--force) removes it (fact 23).
+func (wt Worktree) Undo(ctx context.Context, dir string) error {
 	var removed error
 
 	if _, err := os.Lstat(wt.Path); !errors.Is(err, fs.ErrNotExist) {
