@@ -57,7 +57,12 @@ func pane(ctx context.Context, env Env, args []string) error {
 		return err
 	}
 
-	feature, err := pickUp(watch(ctx, env.Stdin), store, role, slug)
+	waiting, stop := context.WithCancelCause(ctx)
+	defer stop(nil)
+
+	go watch(env.Stdin, stop)
+
+	feature, err := pickUp(waiting, store, role, slug)
 	if err != nil {
 		return err
 	}
@@ -91,18 +96,12 @@ func prepare() (program, dir string, err error) {
 	return program, dir, nil
 }
 
-// watch returns a context that ends when the pane's terminal does. Once a terminal is gone, a
-// read of it ends, even in a program that missed the hangup (facts 22 and 25), so watch reads the
-// terminal, and drops what the user types there. Ctrl-D ends the context too.
-func watch(ctx context.Context, terminal io.Reader) context.Context {
-	ctx, stop := context.WithCancelCause(ctx)
-
-	go func() {
-		_, err := io.Copy(io.Discard, terminal)
-		stop(fmt.Errorf("the terminal's input ended: %w", cmp.Or(err, io.EOF)))
-	}()
-
-	return ctx
+// watch reads the pane's terminal, and drops what the user types there, until the terminal's
+// input ends, then stops the wait. Once a terminal is gone, a read of it ends, even in a program
+// that missed the hangup (facts 22 and 25). Ctrl-D ends the input too.
+func watch(terminal io.Reader, stop context.CancelCauseFunc) {
+	_, err := io.Copy(io.Discard, terminal)
+	stop(fmt.Errorf("the terminal's input ended: %w", cmp.Or(err, io.EOF)))
 }
 
 // environment returns baton's environment for copilot, with allowAll set to "true" in place of the
