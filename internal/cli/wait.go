@@ -24,7 +24,7 @@ func wait(ctx context.Context, env Env, args []string) error {
 		return err
 	}
 
-	role, slug, err := pane(env.Getenv)
+	role, slug, err := fromPane(env.Getenv)
 	if err != nil {
 		return err
 	}
@@ -39,6 +39,14 @@ func wait(ctx context.Context, env Env, args []string) error {
 		return err
 	}
 
+	_, err = fmt.Fprint(env.Stdout, pickupText(store, feature, role))
+
+	return err
+}
+
+// pickupText says what work the role picked up in the feature: the round, the note's writer and
+// their verdict, and the note's path.
+func pickupText(store state.Store, feature state.Feature, role flow.Role) string {
 	now, work := feature.Flow, feature.Work
 
 	from := string(work.From)
@@ -46,10 +54,9 @@ func wait(ctx context.Context, env Env, args []string) error {
 		from += ", verdict " + string(work.Verdict)
 	}
 
-	_, err = fmt.Fprintf(env.Stdout, "Picked up %s as %s: round %d of %d, from %s.\nNote: %s\n",
-		slug, role, now.Round, now.Cap+now.Extra, from, store.NotePath(slug, work.Note))
-
-	return err
+	return fmt.Sprintf("Picked up %s as %s: round %d of %d, from %s.\nNote: %s\n",
+		feature.Slug, role, now.Round, now.Cap+now.Extra, from,
+		store.NotePath(feature.Slug, work.Note))
 }
 
 // pickUp picks up the role's work in the feature as soon as the role has some, and returns the

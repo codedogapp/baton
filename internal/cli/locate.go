@@ -19,9 +19,9 @@ const (
 // stateFolder is baton's folder in the git common folder.
 const stateFolder = "baton"
 
-// pane returns the role and the feature of the pane that runs baton. It refuses a role that
+// fromPane returns the role and the feature of the pane that runs baton. It refuses a role that
 // baton doesn't know, which no feature would ever pass to.
-func pane(getenv func(string) string) (flow.Role, string, error) {
+func fromPane(getenv func(string) string) (flow.Role, string, error) {
 	role, slug := flow.Role(getenv(envRole)), getenv(envFeature)
 
 	switch {

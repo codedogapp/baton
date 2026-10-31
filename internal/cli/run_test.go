@@ -7,6 +7,7 @@ const usage = `Usage: baton <command> [flags]
 
 Commands:
   handover  hand the feature over to the next role, with a note
+  pane      wait for the role's first work, then become the role's copilot
   status    list the repo's features, with their holder, round and status
   wait      wait for the role's next work, then pick it up and print it
 
@@ -45,6 +46,7 @@ func TestRunReportsTheUsage(t *testing.T) {
 		},
 		{"with status's -h", []string{"status", "-h"}, result{stderr: "Usage of baton status:\n"}},
 		{"with wait's -h", []string{"wait", "-h"}, result{stderr: "Usage of baton wait:\n"}},
+		{"with pane's -h", []string{"pane", "-h"}, result{stderr: "Usage of baton pane:\n"}},
 		{
 			"with status's unknown flag",
 			[]string{"status", "--all"},
