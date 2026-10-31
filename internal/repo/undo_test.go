@@ -1,14 +1,10 @@
 package repo_test
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/codedogapp/baton/internal/repo"
 )
@@ -59,57 +55,17 @@ func TestWorktreeAddDeletesTheBranchWhenGitMakesNoFolder(t *testing.T) {
 	}
 }
 
-// TestWorktreeAddUndoesAStoppedCheckout stops Add while a filter holds up the checkout.
-func TestWorktreeAddUndoesAStoppedCheckout(t *testing.T) {
+// TestWorktreeAddUndoesAKilledCheckout kills git while it checks out, which leaves the worktree
+// locked (fact 23).
+func TestWorktreeAddUndoesAKilledCheckout(t *testing.T) {
 	mainDir, _ := repos(t)
-	marker := filepath.Join(t.TempDir(), "checking-out")
-
-	// The filter holds up git reset, which checks the worktree out, until git worktree add, which
-	// runs it, has ended and left it to another parent (fact 23). It prints first: Add reports the
-	// stop, not what git printed.
-	filters := script(t, "slow", fmt.Sprintf(`up=$(ps -o ppid= -p $PPID)
-echo 'holding up the checkout' >&2
-touch %q
-i=0
-while [ "$(ps -o ppid= -p $PPID)" = "$up" ] && [ $i -lt 200 ]; do sleep 0.05; i=$((i + 1)); done
-cat
-`, marker))
-	run(t, mainDir, "config", "filter.slow.smudge", filepath.Join(filters, "slow"))
-
-	for name, text := range map[string]string{".gitattributes": "f filter=slow\n", "f": "hello\n"} {
-		err := os.WriteFile(filepath.Join(mainDir, name), []byte(text), 0o600)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	run(t, mainDir, "add", ".gitattributes", "f")
-	run(t, mainDir, "commit", "--quiet", "--message", "Filter")
+	holdUp(t, mainDir, "kill -KILL $add\n")
 
 	path := filepath.Join(filepath.Dir(mainDir), "main-demo-1")
 	before := state(t, mainDir, path)
-	errStop := errors.New("stopped")
-	ctx, stop := context.WithCancelCause(t.Context())
 
-	var checkout sync.WaitGroup
-
-	checkout.Go(func() {
-		for ctx.Err() == nil {
-			if _, err := os.Stat(marker); err == nil {
-				stop(errStop)
-			}
-
-			time.Sleep(10 * time.Millisecond)
-		}
-	})
-
-	err := repo.Worktree{Path: path, Branch: "demo-1", Base: "HEAD"}.Add(ctx, mainDir)
-
-	stop(nil)
-	checkout.Wait()
-
-	if want := "make the worktree " + path + ": stopped"; !errors.Is(err, errStop) ||
-		fmt.Sprint(err) != want {
+	err := repo.Worktree{Path: path, Branch: "demo-1", Base: "HEAD"}.Add(t.Context(), mainDir)
+	if want := "make the worktree " + path + ": signal: killed"; fmt.Sprint(err) != want {
 		t.Errorf("Add = %v; want %s", err, want)
 	}
 

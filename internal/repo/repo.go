@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -50,6 +51,9 @@ func git(ctx context.Context, dir string, args ...string) (string, error) {
 	//nolint:gosec // G204: the caller's names come after --end-of-options (fact 23).
 	cmd := exec.CommandContext(ctx, "git", args...) // NOSONAR
 	cmd.Dir = dir
+	// A stop interrupts git, as Ctrl-C does, and git cleans up after itself. A Ctrl-C reaches git
+	// too, and killed while it cleans up, git would leave its worktree half removed (fact 23).
+	cmd.Cancel = func() error { return cmd.Process.Signal(os.Interrupt) }
 
 	out, err := cmd.Output()
 	if err != nil {
