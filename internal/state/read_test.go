@@ -46,7 +46,7 @@ func TestReadIgnoresTheFieldsItDoesntKnow(t *testing.T) {
 	}
 }
 
-func TestReadRefusesAnInvalidFile(t *testing.T) {
+func TestReadAndUpdateRefuseAnInvalidFile(t *testing.T) {
 	const lead = `"flow": {"holder": "lead", "status": "running", "round": 0, "cap": 3, "extra": 0}`
 
 	tests := []struct {
@@ -84,10 +84,17 @@ func TestReadRefusesAnInvalidFile(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			store := holding(t, test.content)
+			_, readErr := store.Read(slug)
+			_, updateErr := store.Update(slug, keep)
 
-			_, err := store.Read(slug)
-			wantError(t, err, "feature file "+featureFile(store)+": ")
-			wantError(t, err, test.want)
+			for _, err := range []error{readErr, updateErr} {
+				wantError(t, err, "feature file "+featureFile(store)+": ")
+				wantError(t, err, test.want)
+			}
+
+			if got := read(t, featureFile(store)); got != test.content {
+				t.Errorf("the feature file holds %s, want it unchanged: %s", got, test.content)
+			}
 		})
 	}
 }

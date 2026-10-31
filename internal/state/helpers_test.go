@@ -25,6 +25,18 @@ func started(t *testing.T) state.Feature {
 	return state.Feature{Slug: slug, Flow: start}
 }
 
+// created returns a store in a new folder, with the new feature in it.
+func created(t *testing.T) state.Store {
+	t.Helper()
+
+	store := state.Store{Dir: filepath.Join(t.TempDir(), "baton")}
+	if err := store.Create(started(t)); err != nil {
+		t.Fatal(err)
+	}
+
+	return store
+}
+
 // featureFile returns the path of the feature's file in the store.
 func featureFile(store state.Store) string {
 	return filepath.Join(store.Dir, "features", slug, "feature.json")
@@ -53,11 +65,32 @@ func writeFile(t *testing.T, path, content string) {
 	}
 }
 
+// read returns the content of the file at the path.
+func read(t *testing.T, path string) string {
+	t.Helper()
+
+	data, err := os.ReadFile(filepath.Clean(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return string(data)
+}
+
 // wantError fails the test unless the error's message has want in it.
 func wantError(t *testing.T, err error, want string) {
 	t.Helper()
 
 	if err == nil || !strings.Contains(err.Error(), want) {
 		t.Errorf("error = %v, want one with %q", err, want)
+	}
+}
+
+// wantNothingIn fails the test unless the folder is empty.
+func wantNothingIn(t *testing.T, folder string) {
+	t.Helper()
+
+	if entries, err := os.ReadDir(folder); err != nil || len(entries) > 0 {
+		t.Errorf("%s holds %v (%v), want nothing", folder, entries, err)
 	}
 }
