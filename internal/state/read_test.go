@@ -55,7 +55,7 @@ func TestReadRefusesAnInvalidFile(t *testing.T) {
 		want    string
 	}{
 		{"no JSON", "lead", "invalid character 'l'"},
-		{"no object", "[]", "cannot unmarshal JSON array"},
+		{"no object", "[]", "unmarshal JSON array into Go struct"},
 		{"two values", `{"format": 1} {}`, "after top-level value"},
 		{"a field twice", `{"format": 1, "format": 1}`, `duplicate object member name "format"`},
 		{"no format", `{"slug": "demo-1", ` + lead + `}`, "format 0: want 1"},
@@ -67,7 +67,7 @@ func TestReadRefusesAnInvalidFile(t *testing.T) {
 		{
 			"a field of the wrong type",
 			`{"format": 1, "slug": "demo-1", "flow": {"round": "one"}}`,
-			`cannot unmarshal JSON string into Go int within "/flow/round"`,
+			`unmarshal JSON string into Go int within "/flow/round"`,
 		},
 		{
 			"another feature's slug",
