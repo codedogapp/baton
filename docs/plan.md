@@ -29,8 +29,8 @@ The first milestone is a walking skeleton (`skeleton`): one feature on a throwaw
 | `sonar` | SonarQube Cloud in CI, `mise run sonar-issues`, and the Sonar checks in the ruleset (decision 23) | Done (#5) |
 | `go-toolchain` | The Go module, golangci-lint with the gates, the coverage gate and `mise run check`, with the first package: `internal/flow`, the roles and who works next (decision 13) | Done (#4) |
 | `validate` | `flow.State.Validate`: whether `Start` and `Next` can make a state, so that a state read from disk gets checked; the state's names in JSON | Done (#6) |
-| `state` | `internal/state`, reading: a feature's file in baton's folder, with its format and slug (decisions 24 and 25), checked when read, since `internal/flow` trusts the state it gets (decision 15) | In review (#7) |
-| `store` | `internal/state`, writing: a new feature and its changes, under the feature's lock, each in a new file renamed over the old one | Todo |
+| `state` | `internal/state`, reading: a feature's file in baton's folder, with its format and slug (decisions 24 and 25), checked when read, since `internal/flow` trusts the state it gets (decision 15) | Done (#7) |
+| `store` | `internal/state`, writing: a new feature and its changes, under the feature's lock, each in a new file renamed over the old one, keeping the fields that a newer baton added (decision 24) | In review (#8) |
 | `journal` | The feature's event log and notes, written under its lock | Todo |
 | `handover` | `baton handover` and `baton status`, with the role and the feature from the pane's environment, and baton's folder under the git common directory | Todo |
 | `wait` | `baton wait`: blocks until the role has work, then prints it and records the pickup (decision 12) | Todo |
@@ -102,6 +102,8 @@ Checked on 2026-10-31 with Copilot CLI 1.0.105 and tmux 3.8, unless a fact says 
 16. **Lessons from zeroshot** (an open-source meta-harness that the user tried and set aside; read, never used here): the flow, gates and round caps belong in the program, not in prompts; QA and review verdicts carry evidence; a run needs an event log and state on disk; Claude Haiku ignored a clear rejection twice, so the engineer needs a strong model.
 17. **macOS.** `sleep` pauses while the Mac sleeps, so waits compare wall-clock times; macOS has no `timeout`. A binary replaced on disk stays stale in the processes that run it.
 18. **SonarQube Cloud.** A new project's first analysis of `main` sets the new code's baseline and computes no quality gate (status `NONE`). The scan action, which waits for the gate, reports that as a failure; a rerun passes.
+19. **macOS's `openat(2)`** (macOS 26.4.1, Go 1.27.3). With `O_CREAT` but not `O_EXCL`, it sometimes fails with "no such file or directory" while other openers make the same file in the same folder: with 20 openers at a time, 355 to 791 of 4,000 opens failed, with or without `O_NOFOLLOW`. `open(2)` with the file's full path never failed, nor did `O_CREAT|O_EXCL` followed, on "file exists", by an open without `O_CREAT` (0 of 4,000 each). `os.Root` opens files with `openat`, so baton makes its lock file with `O_EXCL`.
+20. **`encoding/json/v2`** (Go 1.27.3) says "cannot" or "unable to" in its errors, picked at random once per process, so tests match the rest of the message.
 
 ## 3. Design
 
@@ -154,9 +156,10 @@ with `BATON_ROLE` and `BATON_FEATURE` in its environment. baton keeps each role'
 - `features/<slug>/feature.json`: its format (decision 24), the slug (decision 25), the branch and worktree, the holder, the round and its cap, the status (`running`, `escalated`, `ready`, `delivered`, `closed`), each role's session ID, and the notes not yet delivered;
 - `features/<slug>/events.ndjson`: one JSON line per event (start, handover, pickup, question, answer, escalation, push and pull request), with its time;
 - `features/<slug>/notes/`: the briefs, the handover notes and the final report;
+- `features/<slug>/lock`: the feature's lock, a file that baton never replaces;
 - `questions/<id>.json`: open questions and their answers.
 
-Every change takes an exclusive lock on the feature (`flock`), writes a new file and renames it over the old one, so a reader sees the old state or the new one.
+Every change takes an exclusive lock on the feature (`flock` on its `lock` file, which the kernel releases when the process ends), writes a new file and renames it over the old one, so a reader, who takes no lock, sees the old state or the new one.
 
 **Config** (decision 16). `baton` reads `config.json` in its folder under `os.UserConfigDir()` (`~/Library/Application Support/baton/` on a Mac): defaults, plus a section per repo, keyed by the remote's URL, so nothing goes into a work repo. The settings: the model and reasoning effort per role, an AI credits cap per role, the round cap (3), plan approval (on), the gate command, the branch prefix, the base branch (by default the remote's default branch), the pull request host (by default from the remote's URL), and Jira's site and email. Tokens never go into the file: they live in the login Keychain.
 
@@ -193,7 +196,7 @@ Decisions marked **lead's call** are the lead's, for the user's end review. The 
 21. **Waits poll every second and compare wall-clock times** (lead's call): simple, and right after the Mac sleeps (fact 17). No file-watching dependency.
 22. **Branches are deleted on merge** (lead's call): like Bakhyard, unlike nudge, as the user asked when baton started. The `main` ruleset is nudge's: no deletion, no force push, changes only through pull requests (no approvals needed), and the required checks; the wiki is off, as in nudge.
 23. **SonarQube Cloud joined CI in its own step** (lead's call): it needed a project and a `SONAR_TOKEN` secret that only the user could make (nudge's token is a secret of nudge's repo, not of the organisation), and the user made them on 2026-10-31. Until then, CI ran `mise run check` alone. No job that skips itself without the token: a gate that can turn itself off would hide a lost secret later.
-24. **The feature's file carries its format** (lead's call), a number that changes only when an older baton would misread the new layout. baton reads the format first and refuses a newer one with "run the newer baton", since a `baton wait` or `baton pane` can outlive an upgrade (risk 8). A new field at the top of the file keeps the format: an older baton ignores it and, when it writes the file, keeps it.
+24. **The feature's file carries its format** (lead's call), a number that changes only when an older baton would misread the new layout. baton reads the format first and refuses a newer one with "run the newer baton", since a `baton wait` or `baton pane` can outlive an upgrade (risk 8). A new field at the top of the file keeps the format: an older baton ignores it and, when it writes the file, keeps it. A new field inside `flow` would be lost in that write, so it changes the format.
 25. **A slug is lowercase words of letters and digits, joined by hyphens** (lead's call), such as `demo-1`: it names the feature's folder, branch and tmux session, and is safe in all three.
 
 ## 5. Risks
