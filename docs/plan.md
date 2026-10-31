@@ -26,10 +26,13 @@ The first milestone is a walking skeleton (`skeleton`): one feature on a throwaw
 | `agent-wake` | Spike: wake-ups in an `--agent` session, a plugin's agent IDs, a plugin's hooks, the usage events (facts 3 to 10) | Done, findings in this plan |
 | `agents-md` | AGENTS.md, this plan and the README | Done (#1) |
 | `ci-baseline` | CI with mise and jactionlint; Renovate's config; the `main` ruleset and branch deletion on merge (decisions 22 and 23) | Done (#2) |
-| `sonar` | SonarQube Cloud in CI, `mise run sonar-issues`, and the Sonar checks in the ruleset (decision 23) | In review (#5) |
+| `sonar` | SonarQube Cloud in CI, `mise run sonar-issues`, and the Sonar checks in the ruleset (decision 23) | Done (#5) |
 | `go-toolchain` | The Go module, golangci-lint with the gates, the coverage gate and `mise run check`, with the first package: `internal/flow`, the roles and who works next (decision 13) | Done (#4) |
-| `state` | `internal/state`: a feature's state file, event log and notes under the git common directory, behind a lock, and checked when read, since `internal/flow` trusts the state it gets (decision 15) | Todo |
-| `handover` | `baton handover` and `baton status`, with the role and the feature from the pane's environment | Todo |
+| `validate` | `flow.State.Validate`: whether `Start` and `Next` can make a state, so that a state read from disk gets checked; the state's names in JSON | In review (#6) |
+| `state` | `internal/state`, reading: a feature's file in baton's folder, with its format, checked when read, since `internal/flow` trusts the state it gets (decision 15) | Todo |
+| `store` | `internal/state`, writing: a new feature and its changes, under the feature's lock, each in a new file renamed over the old one | Todo |
+| `journal` | The feature's event log and notes, written under its lock | Todo |
+| `handover` | `baton handover` and `baton status`, with the role and the feature from the pane's environment, and baton's folder under the git common directory | Todo |
 | `wait` | `baton wait`: blocks until the role has work, then prints it and records the pickup (decision 12) | Todo |
 | `tmux` | `internal/tmux`: sessions, panes, titles and options on a chosen socket, tested on `-L baton-test-<n>`; tmux through mise (fact 11) | Todo |
 | `worktree` | `internal/worktree`: the feature's branch and its worktree next to the repo | Todo |
@@ -98,6 +101,7 @@ Checked on 2026-10-31 with Copilot CLI 1.0.105 and tmux 3.8, unless a fact says 
 15. **Lessons from an earlier private attempt** (a tmux launcher with an MCP dispatcher): orchestrators told to "only dispatch" did the work themselves; the `task` tool ran agents nobody could see; bash 3.2 and stacked panes caused trouble.
 16. **Lessons from zeroshot** (an open-source meta-harness that the user tried and set aside; read, never used here): the flow, gates and round caps belong in the program, not in prompts; QA and review verdicts carry evidence; a run needs an event log and state on disk; Claude Haiku ignored a clear rejection twice, so the engineer needs a strong model.
 17. **macOS.** `sleep` pauses while the Mac sleeps, so waits compare wall-clock times; macOS has no `timeout`. A binary replaced on disk stays stale in the processes that run it.
+18. **SonarQube Cloud.** A new project's first analysis of `main` sets the new code's baseline and computes no quality gate (status `NONE`). The scan action, which waits for the gate, reports that as a failure; a rerun passes.
 
 ## 3. Design
 
