@@ -26,13 +26,17 @@ type Env struct {
 	// Executable returns the path of baton's own program, which a feature's panes run, as
 	// os.Executable does.
 	Executable func() (string, error)
-	// Tmux makes the features' tmux sessions on the user's tmux server.
-	Tmux SessionMaker
+	// Tmux is the user's tmux server, where baton makes its sessions.
+	Tmux Server
 }
 
-// SessionMaker makes tmux sessions, as tmux.Server does.
-type SessionMaker interface {
+// Server is a tmux server, as tmux.Server is: baton makes the sessions of the orchestrator and of
+// the features there, and shows the orchestrator's in the user's terminal.
+type Server interface {
 	NewSession(ctx context.Context, session tmux.Session) error
+	SessionDir(ctx context.Context, name string) (string, bool)
+	SwitchClient(ctx context.Context, name string) error
+	AttachCommand(name string) []string
 }
 
 // The exit codes of a command that didn't run to its end.
@@ -42,12 +46,13 @@ const (
 )
 
 // usage lists the commands.
-const usage = `Usage: baton <command> [flags]
+const usage = `Usage: baton [<command>] [flags]
 
 Commands:
+  start          open the repo's orchestrator in its tmux session, as plain baton does
   feature start  start a feature from a brief: its branch, its worktree and its tmux session
   handover       hand a feature over to the next role, with a note
-  pane           wait for the role's first work, then become the role's copilot
+  pane           become the pane's copilot: the orchestrator's, or the role's once it has work
   status         list the repo's features, with their holder, round and status
   wait           wait for the role's next work, then pick it up and print it
 
@@ -60,15 +65,17 @@ type usageError struct{ error }
 // Unwrap returns the flag package's error.
 func (e usageError) Unwrap() error { return e.error }
 
-// Run runs the command that the arguments name, and returns the process's exit code.
+// Run runs the command that the arguments name, or baton start if they name none, and returns the
+// process's exit code.
 func Run(ctx context.Context, env Env) int {
-	if len(env.Args) == 0 {
-		_, _ = fmt.Fprint(env.Stderr, usage)
-
-		return exitUsage
+	name, args := "start", env.Args
+	if len(env.Args) > 0 {
+		name, args = env.Args[0], env.Args[1:]
 	}
 
-	switch name, args := env.Args[0], env.Args[1:]; name {
+	switch name {
+	case "start":
+		return exit(env.Stderr, name, open(ctx, env, args))
 	case "feature":
 		return runFeature(ctx, env, args)
 	case "handover":

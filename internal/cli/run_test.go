@@ -3,12 +3,13 @@ package cli_test
 import "testing"
 
 // usage is baton's usage, as it lists the commands.
-const usage = `Usage: baton <command> [flags]
+const usage = `Usage: baton [<command>] [flags]
 
 Commands:
+  start          open the repo's orchestrator in its tmux session, as plain baton does
   feature start  start a feature from a brief: its branch, its worktree and its tmux session
   handover       hand a feature over to the next role, with a note
-  pane           wait for the role's first work, then become the role's copilot
+  pane           become the pane's copilot: the orchestrator's, or the role's once it has work
   status         list the repo's features, with their holder, round and status
   wait           wait for the role's next work, then pick it up and print it
 
@@ -38,7 +39,6 @@ func TestRunReportsTheUsage(t *testing.T) {
 		args []string
 		want result
 	}{
-		{"without a command", nil, result{code: 2, stderr: usage}},
 		{"with help", []string{"help"}, result{stdout: usage}},
 		{"with -h", []string{"-h"}, result{stdout: usage}},
 		{"with -help", []string{"-help"}, result{stdout: usage}},
@@ -72,6 +72,15 @@ func TestRunReportsTheUsage(t *testing.T) {
 			result{code: 2, stderr: "flag provided but not defined: -note\n" + startUsage},
 		},
 		{"with status's -h", []string{"status", "-h"}, result{stderr: "Usage of baton status:\n"}},
+		{"with start's -h", []string{"start", "-h"}, result{stderr: "Usage of baton start:\n"}},
+		{
+			"with start's unknown flag",
+			[]string{"start", "--attach"},
+			result{
+				code:   2,
+				stderr: "flag provided but not defined: -attach\nUsage of baton start:\n",
+			},
+		},
 		{"with wait's -h", []string{"wait", "-h"}, result{stderr: "Usage of baton wait:\n"}},
 		{"with pane's -h", []string{"pane", "-h"}, result{stderr: "Usage of baton pane:\n"}},
 		{

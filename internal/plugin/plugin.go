@@ -1,5 +1,6 @@
-// Package plugin holds baton's plugin for Copilot CLI, the roles' agents, which the binary embeds
-// and writes to its cache for --plugin-dir (decisions 11, 36 and 37).
+// Package plugin holds baton's plugin for Copilot CLI, the agents of the orchestrator and the
+// roles, which the binary embeds and writes to its cache for --plugin-dir (decisions 11, 36 and
+// 37).
 package plugin
 
 import (

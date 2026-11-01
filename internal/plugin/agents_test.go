@@ -15,9 +15,10 @@ import (
 // agents is the folder of the plugin's agents, which only Copilot CLI reads (fact 24).
 const agents = "com.github.copilot/agents"
 
-// roles are the roles with an agent in the plugin: the orchestrator's comes with baton start
-// (decision 37).
-var roles = []flow.Role{flow.RoleLead, flow.RoleEngineer, flow.RoleQA, flow.RoleReviewer}
+// roles are the roles with an agent in the plugin: all of them (decision 37).
+var roles = []flow.Role{
+	flow.RoleOrchestrator, flow.RoleLead, flow.RoleEngineer, flow.RoleQA, flow.RoleReviewer,
+}
 
 // TestThePluginIsBatons checks the plugin.json that Copilot CLI needs to load the plugin.
 func TestThePluginIsBatons(t *testing.T) {
@@ -64,7 +65,7 @@ func TestTheAgentsAreTheRoles(t *testing.T) {
 }
 
 // TestEachAgent checks each role's agent: that its ID names it, since the ID is the plugin's
-// name and the agent file's (fact 24), and that its prompt says how to hand over and wait.
+// name and the agent file's (fact 24), and that its prompt says how to move the work and wait.
 func TestEachAgent(t *testing.T) {
 	tree := written(t)
 
@@ -132,12 +133,17 @@ func readAgent(t *testing.T, tree fs.FS, path string) (map[string]string, string
 	return fields, prompt
 }
 
-// commands returns what the role's prompt must say for the role to hand over and to wait.
+// commands returns what the role's prompt must say for the role to move the work and to wait: the
+// orchestrator starts features and hands them back, and the others hand over.
 func commands(role flow.Role) []string {
-	said := []string{"baton handover --note", "start `baton wait`", "in async mode"}
-	if role == flow.RoleQA || role == flow.RoleReviewer {
-		said = append(said, "--verdict approve", "--verdict reject")
-	}
+	said := []string{"start `baton wait`", "in async mode"}
 
-	return said
+	switch role {
+	case flow.RoleOrchestrator:
+		return append(said, "baton feature start <slug> --brief", "baton handover <slug> --to")
+	case flow.RoleQA, flow.RoleReviewer:
+		return append(said, "baton handover --note", "--verdict approve", "--verdict reject")
+	default:
+		return append(said, "baton handover --note")
+	}
 }
