@@ -17,10 +17,14 @@ import (
 // self is the path of baton's own program, in the tests.
 const self = "/opt/baton/bin/baton"
 
-// fakeTmux stands in for the user's tmux server: it keeps the sessions that baton asks for.
+// fakeTmux stands in for the user's tmux server: it keeps the sessions that baton makes and the
+// ones that it shows, and has the sessions in dirs running already.
 type fakeTmux struct {
-	sessions []tmux.Session
-	making   func(ctx context.Context) error // What making a session does and returns, if set.
+	sessions  []tmux.Session
+	making    func(ctx context.Context) error // What making a session does and returns, if set.
+	dirs      map[string]string               // The folders of the sessions that run already.
+	shown     []string                        // The sessions that the user's client switched to.
+	switching error                           // What switching the user's client returns.
 }
 
 func (fake *fakeTmux) NewSession(ctx context.Context, session tmux.Session) error {
@@ -31,6 +35,22 @@ func (fake *fakeTmux) NewSession(ctx context.Context, session tmux.Session) erro
 	}
 
 	return fake.making(ctx)
+}
+
+func (fake *fakeTmux) SessionDir(_ context.Context, name string) (string, bool) {
+	dir, found := fake.dirs[name]
+
+	return dir, found
+}
+
+func (fake *fakeTmux) SwitchClient(_ context.Context, name string) error {
+	fake.shown = append(fake.shown, name)
+
+	return fake.switching
+}
+
+func (*fakeTmux) AttachCommand(name string) []string {
+	return []string{"tmux", "-L", "fake", "attach-session", "-t", "=" + name}
 }
 
 // startIn returns the environment of baton feature start with the arguments, in the folder,

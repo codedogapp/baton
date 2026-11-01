@@ -182,6 +182,20 @@ func (session Session) check() error {
 
 // run runs tmux on the server and returns what it printed, even if it failed.
 func (s Server) run(ctx context.Context, args ...string) (string, error) {
+	// Sonar's go:S4036 wants tmux at a fixed path, but baton runs the user's own tmux, found on
+	// the user's PATH as the user's shell finds it (decision 27). gosec's G204 wants constant
+	// arguments, but tmux needs the session's own; they reach it as text, which no shell reads
+	// (decision 34).
+	//nolint:gosec // G204: the arguments are tmux's IDs, a checked name and escaped text (fact 22).
+	cmd := exec.CommandContext(ctx, "tmux", slices.Concat(s.global(), args)...) // NOSONAR
+
+	out, err := cmd.Output()
+
+	return string(out), failure(ctx, args[0], err)
+}
+
+// global returns tmux's arguments that name the server, which come before its command.
+func (s Server) global() []string {
 	var global []string
 	if s.Socket != "" {
 		global = append(global, "-L", s.Socket)
@@ -191,16 +205,7 @@ func (s Server) run(ctx context.Context, args ...string) (string, error) {
 		global = append(global, "-f", s.Config)
 	}
 
-	// Sonar's go:S4036 wants tmux at a fixed path, but baton runs the user's own tmux, found on
-	// the user's PATH as the user's shell finds it (decision 27). gosec's G204 wants constant
-	// arguments, but tmux needs the session's own; they reach it as text, which no shell reads
-	// (decision 34).
-	//nolint:gosec // G204: the arguments are tmux's IDs, a checked name and escaped text (fact 22).
-	cmd := exec.CommandContext(ctx, "tmux", slices.Concat(global, args)...) // NOSONAR
-
-	out, err := cmd.Output()
-
-	return string(out), failure(ctx, args[0], err)
+	return global
 }
 
 // failure says why running tmux for the command failed, or returns nil if it didn't.

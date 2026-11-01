@@ -12,7 +12,7 @@ import (
 	"github.com/codedogapp/baton/internal/state"
 )
 
-// TestPaneRefusesAndWritesNothing refuses panes that could never start a role's copilot, or that
+// TestPaneRefusesAndWritesNothing refuses panes that could never start their copilot, or that
 // have no feature to wait on, or no work to wait for.
 func TestPaneRefusesAndWritesNothing(t *testing.T) {
 	_, cache := standIn(t)
@@ -56,14 +56,19 @@ func TestPaneRefusesAndWritesNothing(t *testing.T) {
 			want: "want BATON_FEATURE: the lead's pane names its feature there\n",
 		},
 		{
-			name: "in the orchestrator's pane", dir: linked,
-			env:  map[string]string{"BATON_ROLE": "orchestrator"},
-			want: "the orchestrator has no pane: baton pane runs a feature's roles\n",
-		},
-		{
 			name: "without copilot", dir: linked, env: paneOf(flow.RoleLead),
 			setup: func(t *testing.T) { t.Setenv("PATH", t.TempDir()) },
 			want:  `exec: "copilot": executable file not found in $PATH` + "\n",
+		},
+		{
+			name: "the orchestrator's, without copilot", dir: mainDir, env: orchestratorPane(),
+			setup: func(t *testing.T) { t.Setenv("PATH", t.TempDir()) },
+			want:  `exec: "copilot": executable file not found in $PATH` + "\n",
+		},
+		{
+			name: "the orchestrator's, with a feature", dir: mainDir,
+			env:  map[string]string{"BATON_ROLE": "orchestrator", "BATON_FEATURE": "demo-1"},
+			want: "the orchestrator's pane names no feature, but BATON_FEATURE names demo-1\n",
 		},
 		{
 			name: "without a home folder", dir: linked, env: paneOf(flow.RoleLead),

@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -63,7 +62,7 @@ func TestPaneWaitsForTheRolesWork(t *testing.T) {
 		store := started(t, mainDir, fresh())
 
 		env, user := inPane(t, linked, paneOf(flow.RoleEngineer))
-		engineer := make(chan paned, 1)
+		engineer := make(chan ran, 1)
 
 		go func() { engineer <- paneFor(t, env) }()
 
@@ -105,39 +104,41 @@ func TestPaneWaitsForTheRolesWork(t *testing.T) {
 	})
 }
 
-// execed is a command line that baton pane gave Env.Exec, to replace baton with.
-type execed struct {
-	path string
-	args []string
-	env  []string
+// TestPaneBecomesTheOrchestratorsCopilot has the orchestrator's pane write the plugin and become
+// the orchestrator's copilot at once, with no work to wait for and no first prompt, since the user
+// speaks first, and with copilot's own prompts: the user's environment as it is (decision 45).
+func TestPaneBecomesTheOrchestratorsCopilot(t *testing.T) {
+	copilot, cache := standIn(t)
+	t.Setenv("COPILOT_ALLOW_ALL", "1")
+
+	mainDir, _ := repos(t)
+	env, _ := inPane(t, mainDir, orchestratorPane())
+
+	got := runExec(t.Context(), env, nil)
+	if got.result != (result{}) {
+		t.Errorf("got %+v; want exit code 0 and no output", got.result)
+	}
+
+	wantExec(t, got.execs, execed{
+		path: copilot,
+		args: []string{
+			"copilot", "--agent", "baton:orchestrator", "--plugin-dir", pluginIn(t, cache),
+			"--model", "claude-opus-5.5", "--available-tools", "bash", "read_bash", "stop_bash",
+			"list_bash", "view", "create", "edit", "grep", "glob", "web_fetch", "ask_user",
+			"nudge-ask", "nudge-report",
+		},
+		env: os.Environ(),
+	})
 }
 
-// paned is how a run of baton pane went, with the command lines that it gave Env.Exec.
-type paned struct {
-	result
-
-	execs []execed
-}
-
-// standIn puts a stand-in copilot first on the PATH, which does nothing if it runs, and moves the
-// home folder, and with it the user's cache folder, into the test's own. It returns the stand-in's
-// path and baton's folder in that cache folder.
+// standIn puts a stand-in copilot first on the PATH, and moves the home folder, and with it the
+// user's cache folder, into the test's own. It returns the stand-in's path and baton's folder in
+// that cache folder.
 func standIn(t *testing.T) (copilot, cache string) {
 	t.Helper()
 
-	program, err := exec.LookPath("true")
-	if err != nil {
-		t.Fatal(err)
-	}
+	copilot = onPath(t, "copilot")
 
-	bin := t.TempDir()
-	copilot = filepath.Join(bin, "copilot")
-
-	if err := os.Symlink(program, copilot); err != nil {
-		t.Fatal(err)
-	}
-
-	t.Setenv("PATH", bin+string(filepath.ListSeparator)+os.Getenv("PATH"))
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CACHE_HOME", "")
 
@@ -166,37 +167,15 @@ func inPane(t *testing.T, dir string, vars map[string]string) (cli.Env, *io.Pipe
 	}, user
 }
 
-// paneFor runs baton pane like runPane, with an Exec that succeeds, in a bubble, and stops it
+// paneFor runs baton pane like runExec, with an Exec that succeeds, in a bubble, and stops it
 // after an hour of the bubble's time, so a pane that should have ended fails the test at once.
-func paneFor(t *testing.T, env cli.Env) paned {
+func paneFor(t *testing.T, env cli.Env) ran {
 	t.Helper()
 
 	ctx, stop := context.WithTimeout(t.Context(), time.Hour)
 	defer stop()
 
-	return runPane(ctx, env, nil)
-}
-
-// runPane runs baton pane in the environment until the context ends, with its output captured,
-// and an Exec that records the command line and returns the error. A nil error stands for a
-// copilot that has replaced baton.
-func runPane(ctx context.Context, env cli.Env, fails error) paned {
-	var (
-		stdout, stderr strings.Builder
-		got            paned
-	)
-
-	env.Stdout, env.Stderr = &stdout, &stderr
-	env.Exec = func(path string, args, vars []string) error {
-		got.execs = append(got.execs, execed{path: path, args: args, env: vars})
-
-		return fails
-	}
-
-	got.code = cli.Run(ctx, env)
-	got.stdout, got.stderr = stdout.String(), stderr.String()
-
-	return got
+	return runExec(ctx, env, nil)
 }
 
 // copilotLine returns the role's copilot command line, with the plugin's folder and the role's
@@ -244,7 +223,7 @@ func pluginIn(t *testing.T, cache string) string {
 
 // wantCopilot checks that baton pane waited as the role, then gave Env.Exec the command line, and
 // no other.
-func wantCopilot(t *testing.T, got paned, role flow.Role, want execed) {
+func wantCopilot(t *testing.T, got ran, role flow.Role, want execed) {
 	t.Helper()
 
 	waited := result{stdout: string(role) + " in demo-1: waiting for work.\n"}
@@ -252,23 +231,12 @@ func wantCopilot(t *testing.T, got paned, role flow.Role, want execed) {
 		t.Errorf("got %+v; want %+v", got.result, waited)
 	}
 
-	if len(got.execs) != 1 {
-		t.Fatalf("Exec got %d command lines; want 1", len(got.execs))
-	}
-
-	line := got.execs[0]
-	if line.path != want.path || !slices.Equal(line.args, want.args) {
-		t.Errorf("Exec got %q %q; want %q %q", line.path, line.args, want.path, want.args)
-	}
-
-	if !slices.Equal(line.env, want.env) {
-		t.Error("Exec got another environment; want baton's, with COPILOT_ALLOW_ALL=true alone")
-	}
+	wantExec(t, got.execs, want)
 }
 
 // wantRefused checks that baton pane failed for the reason, after it printed the output, and
 // that it gave Env.Exec no command line.
-func wantRefused(t *testing.T, got paned, stdout, reason string) {
+func wantRefused(t *testing.T, got ran, stdout, reason string) {
 	t.Helper()
 
 	want := "baton pane: " + reason

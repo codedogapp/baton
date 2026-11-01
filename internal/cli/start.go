@@ -139,7 +139,7 @@ type launch struct {
 // run makes the feature, which claims its slug, with the brief as the lead's work, then the
 // branch and the worktree, then the tmux session. If a part fails, it undoes the parts it made,
 // even after Ctrl-C (decision 40).
-func (start launch) run(ctx context.Context, sessions SessionMaker) error {
+func (start launch) run(ctx context.Context, sessions Server) error {
 	now, err := flow.Start(roundCap)
 	if err == nil {
 		err = start.store.Create(state.Feature{

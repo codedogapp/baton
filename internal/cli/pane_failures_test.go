@@ -63,8 +63,8 @@ func TestPaneStopsWaiting(t *testing.T) {
 				ctx, stop := context.WithTimeout(ctx, time.Hour)
 				defer stop()
 
-				waited := make(chan paned, 1)
-				go func() { waited <- runPane(ctx, env, nil) }()
+				waited := make(chan ran, 1)
+				go func() { waited <- runExec(ctx, env, nil) }()
 
 				time.Sleep(time.Minute)
 				test.stop(user, cancel)
@@ -90,7 +90,7 @@ func TestPaneReportsACopilotThatFailsToStart(t *testing.T) {
 		store := started(t, mainDir, fresh())
 
 		env, _ := inPane(t, mainDir, paneOf(flow.RoleLead))
-		got := runPane(t.Context(), env, errors.New("exec format error"))
+		got := runExec(t.Context(), env, errors.New("exec format error"))
 
 		want := result{
 			code:   1,

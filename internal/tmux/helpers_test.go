@@ -25,7 +25,8 @@ var sockets atomic.Int64
 
 // TestMain keeps the tests off the user's tmux server, and away from the user's files: the tests'
 // servers keep their sockets in a folder of their own, which is their home folder too, and no
-// TMUX names the user's server.
+// TMUX names the user's server. Once the tests end, it ends every server in that folder, then
+// removes the folder.
 func TestMain(m *testing.M) {
 	// macOS limits a socket's path to 104 bytes, and $TMPDIR there leaves too few of them.
 	dir, err := os.MkdirTemp("/tmp", "baton-tmux-")
@@ -37,6 +38,9 @@ func TestMain(m *testing.M) {
 	code := 1
 	if err == nil {
 		code = m.Run()
+
+		endServers(dir)
+
 		err = os.RemoveAll(dir)
 	}
 
@@ -47,6 +51,18 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(code)
+}
+
+// endServers ends every tmux server whose socket is in the tests' folder. A test's cleanup ends
+// only the server on its own socket, so a server on another socket, such as tmux's default one,
+// would outlive the tests, out of reach once its socket went with the folder.
+func endServers(dir string) {
+	files, _ := os.ReadDir(filepath.Join(dir, fmt.Sprintf("tmux-%d", os.Getuid())))
+	for _, file := range files {
+		// -L names a socket in the folder, which is TMUX_TMPDIR.
+		srv := tmux.Server{Socket: file.Name(), Config: os.DevNull}
+		_ = command(context.Background(), srv, "kill-server").Run()
+	}
 }
 
 // server returns a tmux server of the test's own, which reads only the given config lines, and

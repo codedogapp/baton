@@ -3,7 +3,6 @@ package cli
 import (
 	"cmp"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -26,7 +25,8 @@ const model = "claude-opus-5.5"
 // the folder that copilot starts in, the feature's worktree, for that session (decision 39).
 const allowAll = "COPILOT_ALLOW_ALL"
 
-// pane waits for the first work of the pane's role, then becomes the role's copilot, with that
+// pane becomes the pane's copilot. The orchestrator's copilot starts at once, since the user talks
+// to it. A role's pane waits for the role's first work, then becomes the role's copilot, with that
 // work as its first prompt (decision 38). It finds copilot and writes the plugin before it waits,
 // so that a pane that can't start copilot never picks up work that nobody would then do.
 func pane(ctx context.Context, env Env, args []string) error {
@@ -39,13 +39,13 @@ func pane(ctx context.Context, env Env, args []string) error {
 		return err
 	}
 
-	if role == flow.RoleOrchestrator {
-		return errors.New("the orchestrator has no pane: baton pane runs a feature's roles")
-	}
-
 	program, dir, err := prepare()
 	if err != nil {
 		return err
+	}
+
+	if role == flow.RoleOrchestrator {
+		return becomeCopilot(env, program, orchestrating(dir), os.Environ())
 	}
 
 	store, err := openStore(ctx, env.Dir)
@@ -67,8 +67,14 @@ func pane(ctx context.Context, env Env, args []string) error {
 		return err
 	}
 
-	err = env.Exec(program, command(role, dir, pickupText(store, feature, role)), environment())
-	if err != nil {
+	work := pickupText(store, feature, role)
+
+	return becomeCopilot(env, program, command(role, dir, work), environment())
+}
+
+// becomeCopilot replaces baton with copilot, with the command line and the environment.
+func becomeCopilot(env Env, program string, line, vars []string) error {
+	if err := env.Exec(program, line, vars); err != nil {
 		return fmt.Errorf("start copilot: %w", err)
 	}
 
@@ -114,18 +120,30 @@ func environment() []string {
 	return append(vars, allowAll+"=true")
 }
 
+// tools are the tools that every pane's copilot has: none that runs agents the user can't see,
+// and none of the user's skills or MCP tools (decision 10).
+var tools = []string{
+	"bash", "read_bash", "stop_bash", "list_bash", "view", "create", "edit", "grep", "glob",
+	"web_fetch",
+}
+
 // command returns the role's copilot command line: the role's agent in the plugin, the model,
 // every permission and no questions, the tools, and the role's work as the first prompt
 // (decisions 9 to 11).
 func command(role flow.Role, dir, work string) []string {
-	return []string{
-		"copilot",
-		"--agent", plugin.Agent(role),
-		"--plugin-dir", dir,
-		"--model", model,
-		"--allow-all", "--no-ask-user",
-		"--available-tools", "bash", "read_bash", "stop_bash", "list_bash",
-		"view", "create", "edit", "grep", "glob", "web_fetch",
-		"-i", work,
-	}
+	return slices.Concat([]string{
+		"copilot", "--agent", plugin.Agent(role), "--plugin-dir", dir, "--model", model,
+		"--allow-all", "--no-ask-user", "--available-tools",
+	}, tools, []string{"-i", work})
+}
+
+// orchestrating returns the orchestrator's copilot command line: its agent in the plugin, the
+// model, and the tools, with ask_user and the user's nudge tools, since the user talks to it. It
+// keeps copilot's own prompts for the tools, and has no first prompt, since the user speaks first
+// (decision 45).
+func orchestrating(dir string) []string {
+	return slices.Concat([]string{
+		"copilot", "--agent", plugin.Agent(flow.RoleOrchestrator), "--plugin-dir", dir,
+		"--model", model, "--available-tools",
+	}, tools, []string{"ask_user", "nudge-ask", "nudge-report"})
 }
