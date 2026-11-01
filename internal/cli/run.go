@@ -27,11 +27,11 @@ type Env struct {
 	// os.Executable does.
 	Executable func() (string, error)
 	// Tmux makes the features' tmux sessions on the user's tmux server.
-	Tmux Sessions
+	Tmux SessionMaker
 }
 
-// Sessions makes tmux sessions, as tmux.Server does.
-type Sessions interface {
+// SessionMaker makes tmux sessions, as tmux.Server does.
+type SessionMaker interface {
 	NewSession(ctx context.Context, session tmux.Session) error
 }
 
