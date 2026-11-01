@@ -108,7 +108,6 @@ func TestHandoverRefusesAndWritesNothing(t *testing.T) {
 
 	notes, outside := t.TempDir(), t.TempDir()
 	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(outside))
-	t.Setenv("LC_ALL", "C")
 
 	note := write(t, notes, "note.md", "Done.\n")
 	blank := write(t, notes, "blank.md", " \n\t\n")

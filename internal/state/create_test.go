@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/codedogapp/baton/internal/flow"
 	"github.com/codedogapp/baton/internal/state"
 )
 
@@ -69,6 +70,34 @@ func TestReadReturnsTheCreatedFeature(t *testing.T) {
 
 	if want := stored(t); got != want {
 		t.Errorf("Read = %+v, want %+v", got, want)
+	}
+}
+
+func TestCreateKeepsTheBranchAndTheWorktree(t *testing.T) {
+	store := state.Store{Dir: filepath.Join(t.TempDir(), "baton")}
+	feature := started(t)
+	feature.Branch, feature.Worktree = "feature/demo-1", "/work/main-demo-1"
+
+	if err := store.Create(feature, briefed()); err != nil {
+		t.Fatal(err)
+	}
+
+	want := `  "slug": "demo-1",
+  "branch": "feature/demo-1",
+  "worktree": "/work/main-demo-1",
+  "flow": {
+`
+	if got := read(t, featureFile(store)); !strings.Contains(got, want) {
+		t.Errorf("the feature file holds\n%s\nwant it to hold\n%s", got, want)
+	}
+
+	got, err := store.Read(slug)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if feature.Work = briefing(flow.RoleLead); got != feature {
+		t.Errorf("Read = %+v, want %+v", got, feature)
 	}
 }
 

@@ -3,7 +3,6 @@ package cli
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -28,7 +27,7 @@ func handover(ctx context.Context, env Env, args []string) error {
 		return err
 	}
 
-	note, err := readNote(env.Dir, *notePath)
+	note, err := readNote(env.Dir, "note", *notePath)
 	if err != nil {
 		return err
 	}
@@ -57,10 +56,10 @@ func handover(ctx context.Context, env Env, args []string) error {
 }
 
 // readNote reads the note in the file, whose path is relative to the working folder. The note is
-// the next role's work, so it can't be blank.
-func readNote(dir, path string) ([]byte, error) {
+// the next role's work, so it can't be blank. The name is the note's flag: note, or brief.
+func readNote(dir, name, path string) ([]byte, error) {
 	if path == "" {
-		return nil, errors.New("want --note <file>: the note for the next role")
+		return nil, fmt.Errorf("want --%s <file>: the %s for the next role", name, name)
 	}
 
 	if !filepath.IsAbs(path) {
@@ -69,11 +68,11 @@ func readNote(dir, path string) ([]byte, error) {
 
 	note, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
-		return nil, fmt.Errorf("read the note: %w", err)
+		return nil, fmt.Errorf("read the %s: %w", name, err)
 	}
 
 	if len(bytes.TrimSpace(note)) == 0 {
-		return nil, fmt.Errorf("note %s is blank: it's the next role's work", path)
+		return nil, fmt.Errorf("%s %s is blank: it's the next role's work", name, path)
 	}
 
 	return note, nil

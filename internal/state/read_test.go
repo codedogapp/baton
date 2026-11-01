@@ -36,7 +36,7 @@ func TestReadIgnoresTheFieldsItDoesntKnow(t *testing.T) {
 	store := holding(t, `{
   "format": 1,
   "slug": "demo-1",
-  "branch": "baton/demo-1",
+  "ticket": "DEMO-1",
   "flow": {"holder": "lead", "status": "running", "round": 0, "cap": 3, "extra": 0, "paused": true},
   "sessions": {"lead": "1"}
 }`)
