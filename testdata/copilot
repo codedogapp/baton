@@ -1,0 +1,56 @@
+#!/bin/sh
+# A stand-in for copilot, for baton's walking skeleton (TestSkeleton in main_test.go). It plays its
+# pane's role through one round, as the role's agent would, without a model. For each piece of
+# work, it logs its agent, the turn and the work's first line to $SKELETON_LOG, reads the note,
+# does the role's part, hands over with a note from outside the worktree, then waits for its next
+# work with baton wait, which ends only when the pane does.
+set -eu
+: "${BATON_ROLE:?}" "${SKELETON_LOG:?}"
+
+agent='' work=''
+while [ "$#" -gt 0 ]; do
+	case $1 in
+	--agent) agent=$2 ;;
+	-i) work=$2 ;;
+	esac
+	shift
+done
+
+turn=1
+while :; do
+	printf 'The stand-in copilot, as %s, turn %s:\n%s\n' "$agent" "$turn" "$work"
+	printf '%s %s: %s\n' "$agent" "$turn" "$(printf '%s\n' "$work" | sed -n 1p)" >>"$SKELETON_LOG"
+	cat "$(printf '%s\n' "$work" | sed -n 's/^Note: //p')"
+
+	note=$(mktemp)
+	set -- --note "$note"
+	case $BATON_ROLE:$turn in
+	lead:1) echo 'Step brief: add demo.txt.' >"$note" ;;
+	engineer:1)
+		echo 'Demo.' >demo.txt
+		echo 'Added demo.txt.' >"$note"
+		;;
+	qa:1)
+		echo 'Checked demo.txt.' >"$note"
+		set -- "$@" --verdict approve
+		;;
+	reviewer:1)
+		echo 'Reviewed demo.txt.' >"$note"
+		set -- "$@" --verdict approve
+		;;
+	lead:2)
+		git add demo.txt
+		git commit --quiet --message 'Add demo.txt'
+		echo 'Final report: committed demo.txt.' >"$note"
+		;;
+	*)
+		echo "The stand-in has no turn $turn for $BATON_ROLE." >&2
+		exit 1
+		;;
+	esac
+
+	baton handover "$@"
+	rm "$note"
+	work=$(baton wait)
+	turn=$((turn + 1))
+done
