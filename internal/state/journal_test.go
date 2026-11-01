@@ -110,8 +110,9 @@ func TestUpdateLogsAnEventWithoutANote(t *testing.T) {
 
 	lines := strings.Split(strings.TrimSuffix(read(t, eventsFile(store)), "\n"), "\n")
 	if len(lines) != 2 || strings.Contains(lines[1], `"note"`) ||
-		strings.Contains(lines[1], `"verdict"`) {
-		t.Errorf("the event log holds %q, want a second event without a note or a verdict", lines)
+		strings.Contains(lines[1], `"verdict"`) || strings.Contains(lines[1], `"text"`) {
+		t.Errorf("the event log holds %q, want a second event without a note, a verdict "+
+			"or a text", lines)
 	}
 
 	wantNotes(t, store, "01-orchestrator-to-lead.md")

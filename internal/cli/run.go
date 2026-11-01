@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/codedogapp/baton/internal/tmux"
 )
@@ -50,6 +51,8 @@ const usage = `Usage: baton [<command>] [flags]
 
 Commands:
   start          open the repo's orchestrator in its tmux session, as plain baton does
+  answer         answer the question of a feature's role, in the orchestrator's pane
+  ask            ask the orchestrator a question, in a role's pane, then wait for the answer
   feature start  start a feature from a brief: its branch, its worktree and its tmux session
   handover       hand a feature over to the next role, with a note
   pane           become the pane's copilot: the orchestrator's, or the role's once it has work
@@ -58,6 +61,17 @@ Commands:
 
 Run baton <command> -h for the command's flags.
 `
+
+// commands are baton's commands, by name, but for baton feature's, which take two words.
+var commands = map[string]func(context.Context, Env, []string) error{
+	"start":    open,
+	"answer":   answer,
+	"ask":      ask,
+	"handover": handover,
+	"pane":     pane,
+	"status":   status,
+	"wait":     wait,
+}
 
 // usageError is a command line that doesn't parse. The flag package has reported it.
 type usageError struct{ error }
@@ -73,19 +87,13 @@ func Run(ctx context.Context, env Env) int {
 		name, args = env.Args[0], env.Args[1:]
 	}
 
+	if command, found := commands[name]; found {
+		return exit(env.Stderr, name, command(ctx, env, args))
+	}
+
 	switch name {
-	case "start":
-		return exit(env.Stderr, name, open(ctx, env, args))
 	case "feature":
 		return runFeature(ctx, env, args)
-	case "handover":
-		return exit(env.Stderr, name, handover(ctx, env, args))
-	case "pane":
-		return exit(env.Stderr, name, pane(ctx, env, args))
-	case "status":
-		return exit(env.Stderr, name, status(ctx, env, args))
-	case "wait":
-		return exit(env.Stderr, name, wait(ctx, env, args))
 	case "help", "-h", "-help", "--help":
 		_, _ = fmt.Fprint(env.Stdout, usage)
 
@@ -135,6 +143,28 @@ func parseSlug(flags *flag.FlagSet, args []string) (string, error) {
 	}
 
 	return slug, nil
+}
+
+// parseTexts parses the command's flags, then returns its arguments: one for each of the names,
+// which say what it is, and none of them blank. The roles quote each one for the shell.
+func parseTexts(flags *flag.FlagSet, args []string, names ...string) ([]string, error) {
+	if err := flags.Parse(args); err != nil {
+		return nil, usageError{err}
+	}
+
+	texts := flags.Args()
+	if len(texts) > len(names) {
+		return nil, fmt.Errorf("unexpected argument %q: quote each text for the shell",
+			texts[len(names)])
+	}
+
+	for i, name := range names {
+		if i == len(texts) || strings.TrimSpace(texts[i]) == "" {
+			return nil, fmt.Errorf("want %s", name)
+		}
+	}
+
+	return texts, nil
 }
 
 // exit reports the command's error, if any, and returns the process's exit code.

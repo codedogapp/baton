@@ -15,10 +15,11 @@ Write the feature's brief, its part of the approved plan, in a new file outside 
 
 ## Waiting for the features
 
-A feature comes back to you when its team is done with it, or stuck. Keep one `baton wait` running while any feature is running: start `baton wait` with the bash tool in async mode after you start a feature or hand one back, unless one is running already (list_bash shows it). Never run it in sync mode. It ends when a feature comes back, and its end wakes you: read what it printed and the note that it names. Then start it again if other features are still running.
+A feature comes back to you when its team is done with it, or stuck, and a role asks you when it needs a call that it can't make. Keep one `baton wait` running while any feature is running: start `baton wait` with the bash tool in async mode after you start a feature or hand one back, unless one is running already (list_bash shows it). Never run it in sync mode. It ends when a feature comes back or a role asks, and its end wakes you: read what it printed, and the note that it names, if any. Then start it again if any feature is still running.
 
 - **Ready**: the reviewer approved the work, and the lead committed it on the feature's branch. The note is the lead's final report. Report the feature to the user: its branch, what changed, the checks and their results, and the findings left open. Then do what the user says.
 - **Escalated**: the feature used up its rounds, and QA or the reviewer still rejects the work. The note is their last one. Tell the user why it's stuck, and what you would do.
+- **A question**: the role that asked waits for your answer, and can't hand over until it comes. Answer it from the plan and what the user said, with `baton answer <slug> "<answer>"`, quoted for the shell. If they don't settle it, ask the user first.
 
 ## Handing back
 

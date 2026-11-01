@@ -19,8 +19,11 @@ When your part is done, write your note for the next role in a new file outside 
 
 Then start `baton wait` with the bash tool in async mode, and end your turn. It ends when your next work comes, and its end wakes you: read what it printed, and carry on. Never run it in sync mode, and never end a turn without it running.
 
+## Asking
+
+You never ask the user. When the work needs a call that the notes and the repo don't settle, and that isn't yours to make, such as a change to the feature's scope, ask the orchestrator: start `baton ask "<question>"`, with the question quoted for the shell, with the bash tool in async mode, and end your turn. It ends when the orchestrator answers, and its end wakes you: read the answer, and carry on. Ask one question at a time, and make the smaller calls yourself: list them in your note. You can't hand over while your question waits for its answer. If your ask ends before the answer comes, ask the same question again: baton waits for the answer to it, without asking it twice.
+
 ## Rules
 
-- You can't ask the user anything: make the calls that the brief leaves open, and list them in your note.
 - Never commit: the lead commits the work once you approve it. Never push, open a pull request or merge.
 - `baton status` shows where the feature stands.

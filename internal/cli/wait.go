@@ -46,9 +46,15 @@ func wait(ctx context.Context, env Env, args []string) error {
 
 // pickupText says what work the role picked up in the feature: the round, the note's writer and
 // their verdict, and the note's path. The orchestrator's work also says why it holds the feature:
-// it's ready or escalated.
+// it's ready or escalated. In a feature that a role holds, its work is the role's question.
 func pickupText(store state.Store, feature state.Feature, role flow.Role) string {
 	now, work := feature.Flow, feature.Work
+
+	if now.Holder != role {
+		return fmt.Sprintf("Picked up the %s's question in %s:\n%s\n"+
+			"Answer it with baton answer %s \"<answer>\".\n",
+			feature.Question.From, feature.Slug, feature.Question.Text, feature.Slug)
+	}
 
 	stands := fmt.Sprintf("round %d of %d", now.Round, now.Cap+now.Extra)
 	if now.Status != flow.StatusRunning {
@@ -91,10 +97,11 @@ func pickUp(ctx context.Context, store state.Store, role flow.Role, slug string)
 	}
 }
 
-// pickUpAny picks up the orchestrator's work in the first feature, by slug, that has some. It
-// fails with errNoWork if none has, as long as a role holds a feature, since work can come from
-// that feature. Once the orchestrator holds them all, or there are none, no work can come, so it
-// gives a reason instead (decision 44).
+// pickUpAny picks up the orchestrator's work in the first feature, by slug, that has some: its
+// note in a feature that it holds, or the holder's question in one that a role holds (decision
+// 46). It fails with errNoWork if none has, as long as a role holds a feature, since work can come
+// from that feature. Once the orchestrator holds them all, or there are none, no work can come, so
+// it gives a reason instead (decision 44).
 func pickUpAny(store state.Store) (state.Feature, error) {
 	features, err := store.List()
 	if err != nil {
@@ -104,14 +111,12 @@ func pickUpAny(store state.Store) (state.Feature, error) {
 	running := false
 
 	for _, feature := range features {
+		change := picked(flow.RoleOrchestrator)
 		if feature.Flow.Holder != flow.RoleOrchestrator {
-			running = true
-
-			continue
+			running, change = true, pickedQuestion
 		}
 
-		got, err := store.Update(feature.Slug, pickup(flow.RoleOrchestrator),
-			picked(flow.RoleOrchestrator))
+		got, err := store.Update(feature.Slug, pickup(flow.RoleOrchestrator), change)
 		if !errors.Is(err, errNoWork) {
 			return got, err
 		}
@@ -152,4 +157,17 @@ func picked(role flow.Role) func(*state.Feature) error {
 				role, feature.Slug)
 		}
 	}
+}
+
+// pickedQuestion marks the holder's question picked up by the orchestrator. It fails with
+// errNoWork unless the question waits for its answer and the orchestrator hasn't picked it up.
+func pickedQuestion(feature *state.Feature) error {
+	question := &feature.Question
+	if !question.Open() || question.Picked {
+		return errNoWork
+	}
+
+	question.Picked = true
+
+	return nil
 }
