@@ -112,8 +112,7 @@ func TestHandoverRefusesAndWritesNothing(t *testing.T) {
 	note := write(t, notes, "note.md", "Done.\n")
 	blank := write(t, notes, "blank.md", " \n\t\n")
 	lead := paneOf(flow.RoleLead)
-	paneless := "run it in a role's pane, where BATON_ROLE and BATON_FEATURE name the role and " +
-		"the feature\n"
+	roleless := "want BATON_ROLE: run it in a pane that baton started, which names its role there\n"
 
 	cases := []struct {
 		name string
@@ -122,9 +121,14 @@ func TestHandoverRefusesAndWritesNothing(t *testing.T) {
 		args []string
 		want string // The start of the reason, after "baton handover: ".
 	}{
-		{"outside a pane", linked, nil, []string{"--note", note}, paneless},
-		{"without its feature", linked, map[string]string{"BATON_ROLE": "lead"}, nil, paneless},
-		{"without its role", linked, map[string]string{"BATON_FEATURE": slug}, nil, paneless},
+		{"outside a pane", linked, nil, []string{"--note", note}, roleless},
+		{
+			"without its feature", linked,
+			map[string]string{"BATON_ROLE": "lead"},
+			nil,
+			"want BATON_FEATURE: the lead's pane names its feature there\n",
+		},
+		{"without its role", linked, map[string]string{"BATON_FEATURE": slug}, nil, roleless},
 		{"without a note", linked, lead, nil, "want --note <file>: the note for the next role\n"},
 		{
 			"with a missing note", linked, lead,

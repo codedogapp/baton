@@ -47,12 +47,17 @@ func TestPaneRefusesAndWritesNothing(t *testing.T) {
 			want: `unexpected argument "now"`,
 		},
 		{
-			name: "outside a pane", dir: linked, env: map[string]string{"BATON_ROLE": "lead"},
-			want: "run it in a role's pane, where BATON_ROLE and BATON_FEATURE name the role and " +
-				"the feature\n",
+			name: "outside a pane", dir: linked, env: nil,
+			want: "want BATON_ROLE: run it in a pane that baton started, which names its role " +
+				"there\n",
 		},
 		{
-			name: "in the orchestrator's pane", dir: linked, env: paneOf(flow.RoleOrchestrator),
+			name: "without its feature", dir: linked, env: map[string]string{"BATON_ROLE": "lead"},
+			want: "want BATON_FEATURE: the lead's pane names its feature there\n",
+		},
+		{
+			name: "in the orchestrator's pane", dir: linked,
+			env:  map[string]string{"BATON_ROLE": "orchestrator"},
 			want: "the orchestrator has no pane: baton pane runs a feature's roles\n",
 		},
 		{

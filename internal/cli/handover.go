@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,18 +12,25 @@ import (
 	"github.com/codedogapp/baton/internal/state"
 )
 
-// handover hands the pane's feature over from its role to the next one, with a note: the next
-// role's work. QA and the reviewer give their verdict.
+// handover hands a feature over from the pane's role to the next one, with a note: the next role's
+// work. QA and the reviewer give their verdict. The orchestrator, whose pane names no feature,
+// names the feature and the next role (decision 44).
 func handover(ctx context.Context, env Env, args []string) error {
 	flags := newFlags(env, "handover")
 	notePath := flags.String("note", "", "the `file` with the note for the next role (required)")
 	verdict := flags.String("verdict", "", "QA's or the reviewer's `verdict`: approve or reject")
+	next := flags.String("to", "", "the orchestrator's pick of the next `role`: lead or engineer")
 
-	if err := parse(flags, args); err != nil {
+	named, err := parseSlug(flags, args)
+	if err != nil {
 		return err
 	}
 
 	role, slug, err := fromPane(env.Getenv)
+	if err == nil {
+		slug, err = handedOver(role, slug, named, *next)
+	}
+
 	if err != nil {
 		return err
 	}
@@ -37,7 +45,7 @@ func handover(ctx context.Context, env Env, args []string) error {
 		return err
 	}
 
-	move := flow.Handover{From: role, Verdict: flow.Verdict(*verdict)}
+	move := flow.Handover{From: role, To: flow.Role(*next), Verdict: flow.Verdict(*verdict)}
 	entry := state.Entry{
 		Event: state.Event{Kind: state.EventHandover, Role: role, Verdict: move.Verdict},
 		Note:  note,
@@ -53,6 +61,25 @@ func handover(ctx context.Context, env Env, args []string) error {
 		slug, now.Holder, now.Status, now.Round, now.Cap+now.Extra)
 
 	return nil
+}
+
+// handedOver returns the feature that the role hands over: a role's pane names it, and the
+// orchestrator names it on the command line, with the next role, since its pane names no feature.
+func handedOver(role flow.Role, slug, named, next string) (string, error) {
+	switch {
+	case role != flow.RoleOrchestrator && named != "":
+		return "", fmt.Errorf("unexpected argument %q", named)
+	case role != flow.RoleOrchestrator:
+		return slug, nil
+	case named == "":
+		return "", errors.New(
+			"want the feature's slug: baton handover <slug> --to <role> --note <file>")
+	case next == "":
+		return "", errors.New(
+			"want --to lead, with a new brief, or, after an escalation, --to engineer")
+	default:
+		return named, nil
+	}
 }
 
 // readNote reads the note in the file, whose path is relative to the working folder. The note is

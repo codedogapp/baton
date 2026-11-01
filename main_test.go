@@ -21,7 +21,8 @@ const asBaton = "BATON_TEST_AS_BATON"
 // git and tmux away from the user's: git without the user's config, in the C locale, with a test
 // author, and without the variables that git sets for its hooks, such as GIT_DIR; tmux without
 // TMUX and TMUX_PANE, which name the user's server; and no XDG folders, so that baton's cache and
-// tmux's config are in the test's home folder.
+// tmux's config are in the test's home folder. It also clears BATON_ROLE and BATON_FEATURE, which
+// name the pane, if a pane of baton's runs the tests.
 func TestMain(m *testing.M) {
 	if os.Getenv(asBaton) == "1" {
 		main()
@@ -35,7 +36,9 @@ func TestMain(m *testing.M) {
 		}
 	}
 
-	for _, name := range []string{"TMUX", "TMUX_PANE", "XDG_CACHE_HOME", "XDG_CONFIG_HOME"} {
+	for _, name := range []string{
+		"TMUX", "TMUX_PANE", "XDG_CACHE_HOME", "XDG_CONFIG_HOME", "BATON_ROLE", "BATON_FEATURE",
+	} {
 		errs = append(errs, os.Unsetenv(name))
 	}
 
@@ -78,8 +81,8 @@ func TestSkeleton(t *testing.T) {
 
 	wait := exec.CommandContext(ctx, "baton", "wait")
 
-	wait.Env = append(os.Environ(), "BATON_ROLE=orchestrator", "BATON_FEATURE=demo-1")
-	wantOut(t, wait, "Picked up demo-1 as orchestrator: round 1 of 3, from lead.\nNote: "+
+	wait.Env = append(os.Environ(), "BATON_ROLE=orchestrator")
+	wantOut(t, wait, "Picked up demo-1 as orchestrator: ready, round 1 of 3, from lead.\nNote: "+
 		filepath.Join(feature, "notes", "06-lead-to-orchestrator.md")+"\n")
 
 	wantOut(t, exec.CommandContext(t.Context(), "baton", "status"),
