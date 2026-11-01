@@ -133,17 +133,20 @@ func readAgent(t *testing.T, tree fs.FS, path string) (map[string]string, string
 	return fields, prompt
 }
 
-// commands returns what the role's prompt must say for the role to move the work and to wait: the
-// orchestrator starts features and hands them back, and the others hand over.
+// commands returns what the role's prompt must say for the role to move the work, to wait, and to
+// ask or answer: the orchestrator starts features, answers questions and hands features back, and
+// the others hand over and ask.
 func commands(role flow.Role) []string {
 	said := []string{"start `baton wait`", "in async mode"}
-
-	switch role {
-	case flow.RoleOrchestrator:
-		return append(said, "baton feature start <slug> --brief", "baton handover <slug> --to")
-	case flow.RoleQA, flow.RoleReviewer:
-		return append(said, "baton handover --note", "--verdict approve", "--verdict reject")
-	default:
-		return append(said, "baton handover --note")
+	if role == flow.RoleOrchestrator {
+		return append(said, "baton feature start <slug> --brief", "baton handover <slug> --to",
+			"`baton answer <slug> \"<answer>\"`")
 	}
+
+	said = append(said, "baton handover --note", "start `baton ask \"<question>\"`")
+	if role == flow.RoleQA || role == flow.RoleReviewer {
+		said = append(said, "--verdict approve", "--verdict reject")
+	}
+
+	return said
 }

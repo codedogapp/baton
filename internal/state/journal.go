@@ -25,7 +25,11 @@ const (
 const (
 	EventStart    = "start"    // The orchestrator started the feature, with its brief to the lead.
 	EventHandover = "handover" // The holder handed the feature over, with a note.
-	EventPickup   = "pickup"   // The holder's baton wait picked up its work.
+	// EventPickup means that a baton wait picked up its work: the holder's, or the orchestrator's
+	// in a feature that a role holds, the role's question.
+	EventPickup   = "pickup"
+	EventQuestion = "question" // The holder asked the orchestrator a question.
+	EventAnswer   = "answer"   // The orchestrator answered it.
 )
 
 // Entry is what a change adds to the feature's journal: its event, and the note that came with
@@ -44,8 +48,9 @@ type Event struct {
 	Kind    string       `json:"event"`
 	Role    flow.Role    `json:"role"` // The role that acted.
 	Verdict flow.Verdict `json:"verdict,omitzero"`
-	Note    string       `json:"note,omitzero"` // The name of the note in the notes folder.
-	Flow    flow.State   `json:"flow"`          // Where the feature stands after the event.
+	Note    string       `json:"note,omitzero"`  // The name of the note in the notes folder.
+	Text    string       `json:"text,omitempty"` // The question, or the answer.
+	Flow    flow.State   `json:"flow"`           // Where the feature stands after the event.
 }
 
 // check returns an error if the event doesn't say what happened and who did it.

@@ -105,15 +105,23 @@ func readNote(dir, name, path string) ([]byte, error) {
 	return note, nil
 }
 
-// moved returns the change that makes the move in the feature's flow.
+// moved returns the change that makes the move in the feature's flow. It refuses while the
+// holder's question waits for its answer, since the answer goes to the role that asked, and clears
+// the question once it has its answer, since the question belongs to the holder's turn (decision
+// 46).
 func moved(move flow.Handover) func(*state.Feature) error {
 	return func(feature *state.Feature) error {
+		if question := feature.Question; question.Open() {
+			return fmt.Errorf("the %s's question %q waits for its answer: wait for it, "+
+				"then hand over", question.From, question.Text)
+		}
+
 		next, err := feature.Flow.Next(move)
 		if err != nil {
 			return err
 		}
 
-		feature.Flow = next
+		feature.Flow, feature.Question = next, state.Question{}
 
 		return nil
 	}

@@ -25,6 +25,9 @@ type Feature struct {
 	// Work is the holder's work: the last note, since each note goes to the holder after the
 	// change that brought it (decision 31).
 	Work Work `json:"work,omitzero"`
+	// Question is the holder's last question to the orchestrator, and its answer once it comes,
+	// until the holder hands the feature over (decision 46).
+	Question Question `json:"question,omitzero"`
 }
 
 // Work is the note that the holder works from.
@@ -33,6 +36,19 @@ type Work struct {
 	From    flow.Role    `json:"from"`             // The role that wrote it.
 	Verdict flow.Verdict `json:"verdict,omitzero"` // That role's verdict, if it gave one.
 	Picked  bool         `json:"picked"`           // Whether the holder's baton wait picked it up.
+}
+
+// Question is a holder's question to the orchestrator.
+type Question struct {
+	From   flow.Role `json:"from"` // The role that asked it: the holder.
+	Text   string    `json:"text"`
+	Picked bool      `json:"picked"`           // Whether the orchestrator's baton wait picked it up.
+	Answer string    `json:"answer,omitempty"` // The orchestrator's answer, once it comes.
+}
+
+// Open reports whether the question waits for its answer.
+func (q Question) Open() bool {
+	return q.Text != "" && q.Answer == ""
 }
 
 // check returns an error if the feature can't be the one in the folder of the slug.

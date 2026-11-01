@@ -7,6 +7,8 @@ const usage = `Usage: baton [<command>] [flags]
 
 Commands:
   start          open the repo's orchestrator in its tmux session, as plain baton does
+  answer         answer the question of a feature's role, in the orchestrator's pane
+  ask            ask the orchestrator a question, in a role's pane, then wait for the answer
   feature start  start a feature from a brief: its branch, its worktree and its tmux session
   handover       hand a feature over to the next role, with a note
   pane           become the pane's copilot: the orchestrator's, or the role's once it has work
@@ -82,6 +84,24 @@ func TestRunReportsTheUsage(t *testing.T) {
 			},
 		},
 		{"with wait's -h", []string{"wait", "-h"}, result{stderr: "Usage of baton wait:\n"}},
+		{"with ask's -h", []string{"ask", "-h"}, result{stderr: "Usage of baton ask:\n"}},
+		{"with answer's -h", []string{"answer", "-h"}, result{stderr: "Usage of baton answer:\n"}},
+		{
+			"with ask's unknown flag",
+			[]string{"ask", "--to", "orchestrator", "Which file?"},
+			result{
+				code:   2,
+				stderr: "flag provided but not defined: -to\nUsage of baton ask:\n",
+			},
+		},
+		{
+			"with answer's unknown flag",
+			[]string{"answer", "--to", "lead", "demo-1", "demo.txt"},
+			result{
+				code:   2,
+				stderr: "flag provided but not defined: -to\nUsage of baton answer:\n",
+			},
+		},
 		{"with pane's -h", []string{"pane", "-h"}, result{stderr: "Usage of baton pane:\n"}},
 		{
 			"with status's unknown flag",

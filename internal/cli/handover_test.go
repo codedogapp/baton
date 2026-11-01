@@ -191,7 +191,7 @@ func TestHandoverRefusesAndWritesNothing(t *testing.T) {
 }
 
 // logged is an event of the feature's journal, as its kind, role, verdict and note, and the
-// note's text.
+// note's text, or the event's own: the question or the answer.
 type logged struct {
 	event string
 	note  string
@@ -226,7 +226,7 @@ func wantJournal(t *testing.T, store state.Store, want []logged) {
 
 		got = append(got, logged{
 			event: fmt.Sprintf("%s %s %s %s", event.Kind, event.Role, event.Verdict, event.Note),
-			note:  string(note),
+			note:  string(note) + event.Text,
 		})
 	}
 
