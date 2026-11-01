@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/codedogapp/baton/internal/flow"
 	"github.com/codedogapp/baton/internal/state"
 )
 
@@ -22,12 +23,16 @@ func TestTheStoreRefusesABadSlug(t *testing.T) {
 		feature.Slug = bad
 		_, readErr := store.Read(bad)
 		_, updateErr := store.Update(bad, logged(), keep)
+		_, markErr := store.MarkWaiting(bad, flow.RoleQA)
+		_, waitingErr := store.Waiting(bad, flow.RoleQA)
 
 		errs := map[string]error{
-			"Create": store.Create(feature, briefed()),
-			"Read":   readErr,
-			"Update": updateErr,
-			"Remove": store.Remove(bad),
+			"Create":      store.Create(feature, briefed()),
+			"Read":        readErr,
+			"Update":      updateErr,
+			"Remove":      store.Remove(bad),
+			"MarkWaiting": markErr,
+			"Waiting":     waitingErr,
 		}
 		for call, err := range errs {
 			want := fmt.Sprintf("slug %q: want words of lowercase letters and digits", bad)

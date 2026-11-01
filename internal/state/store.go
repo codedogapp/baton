@@ -167,7 +167,7 @@ func (s Store) Update(slug string, entry Entry, change func(*Feature) error) (Fe
 // Remove removes the feature with the slug, under its lock: its file first, which ends the
 // feature, then its event log and its notes. It keeps the lock file, which baton never replaces,
 // so a process that waits for the lock finds no feature once it gets it, and a new feature can
-// take the slug (decision 40).
+// take the slug (decision 40), and the roles' wait marks, which a wait may hold (decision 47).
 func (s Store) Remove(slug string) error {
 	root, done, err := s.locked(slug)
 	if err != nil {

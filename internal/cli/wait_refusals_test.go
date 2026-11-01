@@ -3,7 +3,9 @@ package cli_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -15,7 +17,8 @@ import (
 	"github.com/codedogapp/baton/internal/state"
 )
 
-// TestWaitStopsWhenItsContextEnds stops a wait for work that never comes.
+// TestWaitStopsWhenItsContextEnds stops a wait for work that never comes. The wait marks QA as
+// waiting until it stops, and leaves only the mark's file, which baton never removes (decision 47).
 func TestWaitStopsWhenItsContextEnds(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		mainDir, linked := repos(t)
@@ -28,6 +31,7 @@ func TestWaitStopsWhenItsContextEnds(t *testing.T) {
 		go func() { waited <- runUntil(ctx, linked, paneOf(flow.RoleQA), "wait") }()
 
 		time.Sleep(time.Minute)
+		wantQAWaiting(t, store, true)
 		stop(errors.New("interrupt signal received"))
 
 		want := result{
@@ -38,6 +42,9 @@ func TestWaitStopsWhenItsContextEnds(t *testing.T) {
 			t.Errorf("got %+v; want %+v", got, want)
 		}
 
+		wantQAWaiting(t, store, false)
+
+		before["features/demo-1/qa.wait"] = ""
 		if after := snapshot(t, store.Dir); !maps.Equal(after, before) {
 			t.Errorf("baton's folder changed to %v", after)
 		}
@@ -131,6 +138,41 @@ func TestWaitRefusesAndWritesNothing(t *testing.T) {
 			if after := snapshot(t, store.Dir); !maps.Equal(after, before) {
 				t.Errorf("baton's folder changed to %v", after)
 			}
+		})
+	}
+}
+
+// TestWaitAndAskFailWithoutTheirMark fail a wait and an ask that find nothing at first and then
+// can't mark their role as waiting, since the stop hook would send the role back to work while
+// they wait (decision 47).
+func TestWaitAndAskFailWithoutTheirMark(t *testing.T) {
+	cases := []struct {
+		role flow.Role
+		args []string
+	}{
+		{flow.RoleQA, []string{"wait"}},
+		{flow.RoleLead, []string{"ask", question}},
+	}
+
+	for _, test := range cases {
+		t.Run(test.args[0], func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				mainDir, linked := repos(t)
+				store := started(t, mainDir, fresh())
+				waitAs(t, linked, flow.RoleLead)
+
+				// A folder in the mark's place.
+				mark := filepath.Join("features", slug, string(test.role)+".wait")
+				if err := os.Mkdir(filepath.Join(store.Dir, mark), 0o700); err != nil {
+					t.Fatal(err)
+				}
+
+				want := result{code: 1, stderr: fmt.Sprintf("baton %s: mark the %s waiting: "+
+					"openat %s: is a directory\n", test.args[0], test.role, mark)}
+				if got := runFor(t, linked, paneOf(test.role), test.args...); got != want {
+					t.Errorf("got %+v; want %+v", got, want)
+				}
+			})
 		})
 	}
 }

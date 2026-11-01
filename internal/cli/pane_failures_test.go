@@ -17,7 +17,8 @@ import (
 
 // TestPaneStopsWaiting stops panes that wait for work that never comes: the terminal's input
 // ends, as when the user presses Ctrl-D, or the terminal fails, as when it's gone (fact 22), or
-// baton's context ends, as when the user presses Ctrl-C.
+// baton's context ends, as when the user presses Ctrl-C. The pane marks QA as waiting until it
+// stops, and leaves only the mark's file, which baton never removes (decision 47).
 func TestPaneStopsWaiting(t *testing.T) {
 	standIn(t)
 
@@ -67,11 +68,14 @@ func TestPaneStopsWaiting(t *testing.T) {
 				go func() { waited <- runExec(ctx, env, nil) }()
 
 				time.Sleep(time.Minute)
+				wantQAWaiting(t, store, true)
 				test.stop(user, cancel)
 
 				wantRefused(t, <-waited, "qa in demo-1: waiting for work.\n",
 					"stopped waiting: "+test.want)
+				wantQAWaiting(t, store, false)
 
+				before["features/demo-1/qa.wait"] = ""
 				if after := snapshot(t, store.Dir); !maps.Equal(after, before) {
 					t.Errorf("baton's folder changed to %v", after)
 				}

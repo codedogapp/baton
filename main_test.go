@@ -64,7 +64,8 @@ func TestMain(m *testing.M) {
 // (testdata/copilot). The test, as the orchestrator, starts the feature with its brief, and its
 // panes run this baton. The lead briefs the engineer, the engineer adds demo.txt, QA and the
 // reviewer approve it, and the lead commits it and hands the final report to the orchestrator,
-// whose baton wait picks it up.
+// whose baton wait picks it up. Each stand-in runs the plugin's stop hook at the end of its turns:
+// the hook sends it back to work before its handover, and lets it stop once its baton wait waits.
 func TestSkeleton(t *testing.T) {
 	root := skeleton(t)
 	feature := filepath.Join(root, "repo", ".git", "baton", "features", "demo-1")
@@ -103,12 +104,17 @@ func TestSkeleton(t *testing.T) {
 	})
 	wantFile(t, filepath.Join(root, "copilot.log"),
 		"baton:lead 1: Picked up demo-1 as lead: round 0 of 3, from orchestrator.\n"+
+			"baton:lead 1 stop: block\n"+
 			"baton:engineer 1: Picked up demo-1 as engineer: round 1 of 3, from lead.\n"+
+			"baton:engineer 1 stop: block\n"+
 			"baton:qa 1: Picked up demo-1 as qa: round 1 of 3, from engineer.\n"+
+			"baton:qa 1 stop: block\n"+
 			"baton:reviewer 1: Picked up demo-1 as reviewer: round 1 of 3, from qa, "+
 			"verdict approve.\n"+
+			"baton:reviewer 1 stop: block\n"+
 			"baton:lead 2: Picked up demo-1 as lead: round 1 of 3, from reviewer, "+
-			"verdict approve.\n")
+			"verdict approve.\n"+
+			"baton:lead 2 stop: block\n")
 
 	wantOut(t, exec.CommandContext(t.Context(), "git", "log", "--format=%s",
 		"main..feature/demo-1"), "Add demo.txt\n")

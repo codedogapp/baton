@@ -22,7 +22,7 @@ func lock(root *os.Root, slug string) (func(), error) {
 		return nil, fmt.Errorf("lock feature %s: %w", slug, err)
 	}
 
-	if err := flock(file); err != nil {
+	if err := flock(file, syscall.LOCK_EX); err != nil {
 		_ = file.Close()
 
 		return nil, fmt.Errorf("lock feature %s: %w", slug, err)
@@ -44,10 +44,11 @@ func openLock(root *os.Root, name string) (*os.File, error) {
 	return file, err
 }
 
-// flock takes an exclusive lock on the file, and waits again when a signal interrupts it.
-func flock(file *os.File) error {
+// flock takes a lock on the file, exclusive or shared as how says, and waits again when a signal
+// interrupts it.
+func flock(file *os.File, how int) error {
 	for {
-		err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX)
+		err := syscall.Flock(int(file.Fd()), how)
 		if !errors.Is(err, syscall.EINTR) {
 			return err
 		}

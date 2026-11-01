@@ -8,6 +8,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/codedogapp/baton/internal/tmux"
@@ -18,14 +20,16 @@ type Env struct {
 	Args   []string            // The arguments after baton's name: the command, then its own.
 	Getenv func(string) string // Reads the process's environment.
 	Dir    string              // The working folder; empty for the process's own.
-	Stdin  io.Reader           // The pane's terminal, which baton pane reads while it waits.
+	// Stdin is the pane's terminal, which baton pane reads while it waits, or the hook's input,
+	// which baton hook stop reads.
+	Stdin  io.Reader
 	Stdout io.Writer
 	Stderr io.Writer
 	// Exec replaces the process with the program at the path, as syscall.Exec does, so it
 	// returns only if it fails.
 	Exec func(path string, args, env []string) error
-	// Executable returns the path of baton's own program, which a feature's panes run, as
-	// os.Executable does.
+	// Executable returns the path of baton's own program, which a feature's panes run, and the
+	// plugin's hook in every pane's copilot, as os.Executable does.
 	Executable func() (string, error)
 	// Tmux is the user's tmux server, where baton makes its sessions.
 	Tmux Server
@@ -55,6 +59,7 @@ Commands:
   ask            ask the orchestrator a question, in a role's pane, then wait for the answer
   feature start  start a feature from a brief: its branch, its worktree and its tmux session
   handover       hand a feature over to the next role, with a note
+  hook stop      copilot's stop hook: send a pane's copilot that stops too soon back to work
   pane           become the pane's copilot: the orchestrator's, or the role's once it has work
   status         list the repo's features, with their holder, round and status
   wait           wait for the role's next work, then pick it up and print it
@@ -62,8 +67,11 @@ Commands:
 Run baton <command> -h for the command's flags.
 `
 
-// commands are baton's commands, by name, but for baton feature's, which take two words.
-var commands = map[string]func(context.Context, Env, []string) error{
+// commandFunc runs one of baton's commands, with its arguments.
+type commandFunc func(ctx context.Context, env Env, args []string) error
+
+// commands are baton's commands of one word, by name.
+var commands = map[string]commandFunc{
 	"start":    open,
 	"answer":   answer,
 	"ask":      ask,
@@ -71,6 +79,12 @@ var commands = map[string]func(context.Context, Env, []string) error{
 	"pane":     pane,
 	"status":   status,
 	"wait":     wait,
+}
+
+// groups are baton's commands of two words, by their first word, then their second.
+var groups = map[string]map[string]commandFunc{
+	"feature": {"start": startFeature},
+	"hook":    {"stop": hookStop},
 }
 
 // usageError is a command line that doesn't parse. The flag package has reported it.
@@ -87,13 +101,15 @@ func Run(ctx context.Context, env Env) int {
 		name, args = env.Args[0], env.Args[1:]
 	}
 
-	if command, found := commands[name]; found {
-		return exit(env.Stderr, name, command(ctx, env, args))
+	if run, found := commands[name]; found {
+		return exit(env.Stderr, name, run(ctx, env, args))
+	}
+
+	if group, found := groups[name]; found {
+		return runGroup(ctx, env, group)
 	}
 
 	switch name {
-	case "feature":
-		return runFeature(ctx, env, args)
 	case "help", "-h", "-help", "--help":
 		_, _ = fmt.Fprint(env.Stdout, usage)
 
@@ -103,6 +119,22 @@ func Run(ctx context.Context, env Env) int {
 
 		return exitUsage
 	}
+}
+
+// runGroup runs the group's command that the second argument names, with the arguments after it,
+// and returns the process's exit code. The first argument names the group.
+func runGroup(ctx context.Context, env Env, group map[string]commandFunc) int {
+	name, args := env.Args[0], env.Args[1:]
+	if len(args) > 0 {
+		if run, found := group[args[0]]; found {
+			return exit(env.Stderr, name+" "+args[0], run(ctx, env, args[1:]))
+		}
+	}
+
+	words := strings.Join(slices.Sorted(maps.Keys(group)), " or ")
+	_, _ = fmt.Fprintf(env.Stderr, "baton %s: want %s\n\n%s", name, words, usage)
+
+	return exitUsage
 }
 
 // newFlags returns the command's flag set, which reports its errors and its usage on stderr.
