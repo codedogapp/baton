@@ -21,17 +21,6 @@ const (
 // team is the roles that work on a feature, in the order of their panes.
 var team = []flow.Role{flow.RoleLead, flow.RoleEngineer, flow.RoleQA, flow.RoleReviewer}
 
-// runFeature runs the feature command's own command: start, for now.
-func runFeature(ctx context.Context, env Env, args []string) int {
-	if len(args) > 0 && args[0] == "start" {
-		return exit(env.Stderr, "feature start", startFeature(ctx, env, args[1:]))
-	}
-
-	_, _ = fmt.Fprintf(env.Stderr, "baton feature: want start\n\n%s", usage)
-
-	return exitUsage
-}
-
 // startFeature starts a feature, with the brief as the lead's work: its state, its branch and
 // worktree next to the repo's main worktree, and its tmux session, with a pane per role that runs
 // baton pane (decisions 40 to 42). Only the orchestrator starts features, so it refuses a role's

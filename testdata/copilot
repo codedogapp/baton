@@ -1,20 +1,39 @@
 #!/bin/sh
 # A stand-in for copilot, for baton's walking skeleton (TestSkeleton in main_test.go). It plays its
 # pane's role through one round, as the role's agent would, without a model. For each piece of
-# work, it logs its agent, the turn and the work's first line to $SKELETON_LOG, reads the note,
-# does the role's part, hands over with a note from outside the worktree, then waits for its next
-# work with baton wait, which ends only when the pane does.
+# work, it logs its agent, the turn and the work's first line to $SKELETON_LOG, reads the note and
+# does the role's part. Then it ends its turn too soon, as a model might, and logs the answer of
+# the plugin's agentStop hook, which it runs as copilot does: block, since the role holds the
+# feature. It hands over with a note from outside the worktree, starts baton wait in the
+# background, as the role's agent does, and ends its turn until the hook lets it, once the wait
+# waits; if the hook never does, it logs that. Then it waits for the wait, which ends when the
+# role's next work comes, or when the pane does.
 set -eu
 : "${BATON_ROLE:?}" "${SKELETON_LOG:?}"
 
-agent='' work=''
+agent='' plugin='' work=''
 while [ "$#" -gt 0 ]; do
 	case $1 in
 	--agent) agent=$2 ;;
+	--plugin-dir) plugin=$2 ;;
 	-i) work=$2 ;;
 	esac
 	shift
 done
+
+hook=$(jq -r '.hooks.agentStop[0].bash' "$plugin/com.github.copilot/hooks/hooks.json")
+
+# stop runs the agentStop hook with the input that copilot gives it at the end of a turn, and
+# prints its answer: allow, block, or what else the hook printed.
+stop() {
+	answer=$(printf '{"cwd":"%s","stopReason":"end_turn","stop_hook_active":false}' "$PWD" |
+		bash -c "$hook") || answer="failed with exit code $?"
+	case $answer in
+	'') echo allow ;;
+	'{"decision":"block",'*) echo block ;;
+	*) printf '%s\n' "$answer" ;;
+	esac
+}
 
 turn=1
 while :; do
@@ -49,8 +68,25 @@ while :; do
 		;;
 	esac
 
+	printf '%s %s stop: %s\n' "$agent" "$turn" "$(stop)" >>"$SKELETON_LOG"
 	baton handover "$@"
 	rm "$note"
-	work=$(baton wait)
+
+	next=$(mktemp)
+	baton wait >"$next" &
+	waiting=$!
+	tries=0
+	until [ "$(stop)" = allow ]; do
+		tries=$((tries + 1))
+		if [ "$tries" -eq 100 ]; then
+			printf '%s %s stop: no allow while baton wait waits\n' "$agent" "$turn" >>"$SKELETON_LOG"
+			break
+		fi
+		sleep 0.05
+	done
+
+	wait "$waiting"
+	work=$(cat "$next")
+	rm "$next"
 	turn=$((turn + 1))
 done

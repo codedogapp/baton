@@ -23,10 +23,14 @@ import (
 
 // TestPaneBecomesTheRolesCopilot has the lead's pane pick up the orchestrator's brief, write the
 // plugin, and become the lead's copilot, with the brief as its first prompt, and with
-// COPILOT_ALLOW_ALL=true in place of the user's own value, which trusts no folder (fact 9).
+// COPILOT_ALLOW_ALL=true in place of the user's own value, which trusts no folder (fact 9), and
+// BATON_BIN naming this baton in place of the user's (decision 47). A variable whose name only
+// starts with one of theirs stays.
 func TestPaneBecomesTheRolesCopilot(t *testing.T) {
 	copilot, cache := standIn(t)
 	t.Setenv("COPILOT_ALLOW_ALL", "1")
+	t.Setenv("BATON_BIN", "/usr/local/bin/baton")
+	t.Setenv("BATON_BIN_OLD", "/opt/baton/bin/baton")
 
 	synctest.Test(t, func(t *testing.T) {
 		mainDir, linked := repos(t)
@@ -106,10 +110,12 @@ func TestPaneWaitsForTheRolesWork(t *testing.T) {
 
 // TestPaneBecomesTheOrchestratorsCopilot has the orchestrator's pane write the plugin and become
 // the orchestrator's copilot at once, with no work to wait for and no first prompt, since the user
-// speaks first, and with copilot's own prompts: the user's environment as it is (decision 45).
+// speaks first, and with copilot's own prompts: the user's environment as it is, but for BATON_BIN,
+// which names this baton for the stop hook (decisions 45 and 47).
 func TestPaneBecomesTheOrchestratorsCopilot(t *testing.T) {
 	copilot, cache := standIn(t)
 	t.Setenv("COPILOT_ALLOW_ALL", "1")
+	t.Setenv("BATON_BIN", "/usr/local/bin/baton")
 
 	mainDir, _ := repos(t)
 	env, _ := inPane(t, mainDir, orchestratorPane())
@@ -127,7 +133,7 @@ func TestPaneBecomesTheOrchestratorsCopilot(t *testing.T) {
 			"list_bash", "view", "create", "edit", "grep", "glob", "web_fetch", "ask_user",
 			"nudge-ask", "nudge-report",
 		},
-		env: os.Environ(),
+		env: append(withoutVars("BATON_BIN"), "BATON_BIN="+self),
 	})
 }
 
@@ -160,10 +166,11 @@ func inPane(t *testing.T, dir string, vars map[string]string) (cli.Env, *io.Pipe
 	t.Cleanup(func() { _ = user.Close() })
 
 	return cli.Env{
-		Args:   []string{"pane"},
-		Getenv: func(name string) string { return vars[name] },
-		Dir:    dir,
-		Stdin:  terminal,
+		Args:       []string{"pane"},
+		Getenv:     func(name string) string { return vars[name] },
+		Dir:        dir,
+		Stdin:      terminal,
+		Executable: func() (string, error) { return self, nil },
 	}, user
 }
 
@@ -190,15 +197,22 @@ func copilotLine(role flow.Role, plugin, work string) []string {
 	}
 }
 
-// copilotEnv returns the environment that copilot gets: baton's, with COPILOT_ALLOW_ALL=true, which
-// trusts copilot's folder, in place of the user's own value, since copilot reads the first of two
-// (fact 9, decision 39).
+// copilotEnv returns the environment that a role's copilot gets: baton's, with BATON_BIN naming
+// this baton, for the stop hook, and COPILOT_ALLOW_ALL=true, which trusts copilot's folder, each in
+// place of the user's own value, since copilot reads the first of two (fact 9, decisions 39 and
+// 47).
 func copilotEnv() []string {
-	vars := slices.DeleteFunc(os.Environ(), func(variable string) bool {
-		return strings.HasPrefix(variable, "COPILOT_ALLOW_ALL=")
-	})
+	return append(withoutVars("BATON_BIN", "COPILOT_ALLOW_ALL"), "BATON_BIN="+self,
+		"COPILOT_ALLOW_ALL=true")
+}
 
-	return append(vars, "COPILOT_ALLOW_ALL=true")
+// withoutVars returns baton's environment without the variables with the names.
+func withoutVars(names ...string) []string {
+	return slices.DeleteFunc(os.Environ(), func(variable string) bool {
+		name, _, _ := strings.Cut(variable, "=")
+
+		return slices.Contains(names, name)
+	})
 }
 
 // pluginName is the name of the plugin's folder in the cache folder (decision 36).

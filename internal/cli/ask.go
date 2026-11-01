@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/codedogapp/baton/internal/flow"
 	"github.com/codedogapp/baton/internal/state"
@@ -80,15 +79,14 @@ func asked(question state.Question) func(*state.Feature) error {
 }
 
 // awaitAnswer reads the feature every second, without its lock, until the question has its
-// answer, and returns the answer. It fails if another question has taken the question's place, or
-// if the holder's handover has cleared it before this ask read the answer, as when another ask of
-// the question read it first.
+// answer, and returns the answer. Like baton wait, it marks the role as waiting while it waits
+// (decision 47). It fails if another question has taken the question's place, or if the holder's
+// handover has cleared it before this ask read the answer, as when another ask of the question
+// read it first.
 func awaitAnswer(ctx context.Context, store state.Store, slug string, question state.Question) (
 	string, error,
 ) {
-	tick := time.Tick(poll)
-
-	for {
+	try := func() (string, error) {
 		feature, err := store.Read(slug)
 		if err != nil {
 			return "", err
@@ -102,14 +100,13 @@ func awaitAnswer(ctx context.Context, store state.Store, slug string, question s
 				last.Text)
 		case last.Answer != "":
 			return last.Answer, nil
-		}
-
-		select {
-		case <-ctx.Done():
-			return "", fmt.Errorf("stopped waiting: %w", context.Cause(ctx))
-		case <-tick:
+		default:
+			return "", errNoWork
 		}
 	}
+	mark := func() (func(), error) { return store.MarkWaiting(slug, question.From) }
+
+	return waitFor(ctx, mark, try)
 }
 
 // answer answers the open question of a feature's holder, in the orchestrator's pane; the

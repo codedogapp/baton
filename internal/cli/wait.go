@@ -13,7 +13,8 @@ import (
 // poll is how often baton wait looks for the role's work (decision 21).
 const poll = time.Second
 
-// errNoWork means that the role has no work in the feature yet.
+// errNoWork means that the role has no work yet: none in the feature, or no answer to its
+// question.
 var errNoWork = errors.New("no work yet")
 
 // wait waits until the pane's role has work, then picks it up: it marks the work picked up and
@@ -81,18 +82,38 @@ func pickUp(ctx context.Context, store state.Store, role flow.Role, slug string)
 		try = func() (state.Feature, error) { return pickUpAny(store) }
 	}
 
-	tick := time.Tick(poll)
+	return waitFor(ctx, func() (func(), error) { return store.MarkWaiting(slug, role) }, try)
+}
 
-	for {
-		feature, err := try()
-		if !errors.Is(err, errNoWork) {
-			return feature, err
-		}
+// waitFor returns what the try finds, once it finds more than errNoWork, and tries again every
+// second until then, or until the context ends. Once the first try finds nothing, it takes the
+// mark, which shows the stop hook that the role waits, and holds it until it returns (decision
+// 47). A try that finds the work at once takes no mark, and a refusal none either.
+func waitFor[T any](ctx context.Context, mark func() (func(), error), try func() (T, error)) (
+	T, error,
+) {
+	got, err := try()
+	if !errors.Is(err, errNoWork) {
+		return got, err
+	}
 
+	var none T
+
+	release, err := mark()
+	if err != nil {
+		return none, err
+	}
+	defer release()
+
+	for tick := time.Tick(poll); ; {
 		select {
 		case <-ctx.Done():
-			return state.Feature{}, fmt.Errorf("stopped waiting: %w", context.Cause(ctx))
+			return none, fmt.Errorf("stopped waiting: %w", context.Cause(ctx))
 		case <-tick:
+		}
+
+		if got, err = try(); !errors.Is(err, errNoWork) {
+			return got, err
 		}
 	}
 }

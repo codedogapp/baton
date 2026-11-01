@@ -1,6 +1,7 @@
 package cli_test
 
 import (
+	"errors"
 	"maps"
 	"os"
 	"path/filepath"
@@ -36,6 +37,7 @@ func TestPaneRefusesAndWritesNothing(t *testing.T) {
 		dir    string
 		env    map[string]string
 		args   []string
+		self   error // What finding baton's own program fails with, if set.
 		stdout string
 		want   string // The start of the reason, after "baton pane: ".
 	}{
@@ -54,6 +56,11 @@ func TestPaneRefusesAndWritesNothing(t *testing.T) {
 		{
 			name: "without its feature", dir: linked, env: map[string]string{"BATON_ROLE": "lead"},
 			want: "want BATON_FEATURE: the lead's pane names its feature there\n",
+		},
+		{
+			name: "without its own program", dir: linked, env: paneOf(flow.RoleLead),
+			self: errors.New("no such file"),
+			want: "find baton's own program: no such file\n",
 		},
 		{
 			name: "without copilot", dir: linked, env: paneOf(flow.RoleLead),
@@ -108,6 +115,10 @@ func TestPaneRefusesAndWritesNothing(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				env, _ := inPane(t, test.dir, test.env)
 				env.Args = append(env.Args, test.args...)
+
+				if test.self != nil {
+					env.Executable = func() (string, error) { return "", test.self }
+				}
 
 				wantRefused(t, paneFor(t, env), test.stdout, test.want)
 			})

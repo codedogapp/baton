@@ -130,6 +130,20 @@ func add(t *testing.T, store state.Store, feature state.Feature) {
 	}
 }
 
+// edit makes the change to demo-1's file, as a hand edit could.
+func edit(t *testing.T, store state.Store, change func(feature *state.Feature)) {
+	t.Helper()
+
+	entry := state.Entry{Event: state.Event{Kind: "edit", Role: flow.RoleOrchestrator}}
+	if _, err := store.Update(slug, entry, func(feature *state.Feature) error {
+		change(feature)
+
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // paneOf returns the environment of the role's pane in the feature.
 func paneOf(role flow.Role) map[string]string {
 	return map[string]string{"BATON_ROLE": string(role), "BATON_FEATURE": slug}
@@ -207,4 +221,14 @@ func snapshot(t *testing.T, dir string) map[string]string {
 	}
 
 	return files
+}
+
+// wantQAWaiting fails the test unless QA's wait mark in demo-1 is as want says: held by a wait,
+// or not.
+func wantQAWaiting(t *testing.T, store state.Store, want bool) {
+	t.Helper()
+
+	if got, err := store.Waiting(slug, flow.RoleQA); err != nil || got != want {
+		t.Errorf("Waiting(demo-1, qa) = %v, %v; want %v", got, err, want)
+	}
 }

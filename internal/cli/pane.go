@@ -25,10 +25,15 @@ const model = "claude-opus-5.5"
 // the folder that copilot starts in, the feature's worktree, for that session (decision 39).
 const allowAll = "COPILOT_ALLOW_ALL"
 
+// envBin is the variable that names baton's own program in every pane's copilot, for the
+// plugin's agentStop hook, which runs baton hook stop (decision 47).
+const envBin = "BATON_BIN"
+
 // pane becomes the pane's copilot. The orchestrator's copilot starts at once, since the user talks
 // to it. A role's pane waits for the role's first work, then becomes the role's copilot, with that
 // work as its first prompt (decision 38). It finds copilot and writes the plugin before it waits,
-// so that a pane that can't start copilot never picks up work that nobody would then do.
+// so that a pane that can't start copilot never picks up work that nobody would then do. Its wait
+// marks the role as waiting, as baton wait does, until copilot replaces it (decision 47).
 func pane(ctx context.Context, env Env, args []string) error {
 	if err := parse(newFlags(env, "pane"), args); err != nil {
 		return err
@@ -39,13 +44,19 @@ func pane(ctx context.Context, env Env, args []string) error {
 		return err
 	}
 
+	self, err := env.Executable()
+	if err != nil {
+		return fmt.Errorf("find baton's own program: %w", err)
+	}
+
 	program, dir, err := prepare()
 	if err != nil {
 		return err
 	}
 
+	bin := envBin + "=" + self
 	if role == flow.RoleOrchestrator {
-		return becomeCopilot(env, program, orchestrating(dir), os.Environ())
+		return becomeCopilot(env, program, orchestrating(dir), environment(bin))
 	}
 
 	store, err := openStore(ctx, env.Dir)
@@ -69,7 +80,7 @@ func pane(ctx context.Context, env Env, args []string) error {
 
 	work := pickupText(store, feature, role)
 
-	return becomeCopilot(env, program, command(role, dir, work), environment())
+	return becomeCopilot(env, program, command(role, dir, work), environment(bin, allowAll+"=true"))
 }
 
 // becomeCopilot replaces baton with copilot, with the command line and the environment.
@@ -110,14 +121,23 @@ func watch(terminal io.Reader, stop context.CancelCauseFunc) {
 	stop(fmt.Errorf("the terminal's input ended: %w", cmp.Or(err, io.EOF)))
 }
 
-// environment returns baton's environment for copilot, with allowAll set to "true" in place of the
-// user's own value, since copilot reads the first of two (fact 9).
-func environment() []string {
-	vars := slices.DeleteFunc(os.Environ(), func(variable string) bool {
-		return strings.HasPrefix(variable, allowAll+"=")
+// environment returns baton's environment for copilot, with the variables, each one name=value,
+// in place of the user's own values for their names, since copilot reads the first of two (fact
+// 9).
+func environment(vars ...string) []string {
+	names := make([]string, 0, len(vars))
+	for _, variable := range vars {
+		name, _, _ := strings.Cut(variable, "=")
+		names = append(names, name)
+	}
+
+	kept := slices.DeleteFunc(os.Environ(), func(variable string) bool {
+		name, _, _ := strings.Cut(variable, "=")
+
+		return slices.Contains(names, name)
 	})
 
-	return append(vars, allowAll+"=true")
+	return append(kept, vars...)
 }
 
 // tools are the tools that every pane's copilot has: none that runs agents the user can't see,
