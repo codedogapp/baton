@@ -6,12 +6,19 @@ import "testing"
 const usage = `Usage: baton <command> [flags]
 
 Commands:
-  handover  hand the feature over to the next role, with a note
-  pane      wait for the role's first work, then become the role's copilot
-  status    list the repo's features, with their holder, round and status
-  wait      wait for the role's next work, then pick it up and print it
+  feature start  start a feature from a brief: its branch, its worktree and its tmux session
+  handover       hand the feature over to the next role, with a note
+  pane           wait for the role's first work, then become the role's copilot
+  status         list the repo's features, with their holder, round and status
+  wait           wait for the role's next work, then pick it up and print it
 
 Run baton <command> -h for the command's flags.
+`
+
+// startUsage is the usage of baton feature start, as it lists the flags.
+const startUsage = `Usage of baton feature start:
+  -brief file
+    	the file with the brief for the lead (required)
 `
 
 // handoverUsage is the usage of baton handover, as it lists the flags.
@@ -23,6 +30,7 @@ const handoverUsage = `Usage of baton handover:
 `
 
 func TestRunReportsTheUsage(t *testing.T) {
+	wantStart := "baton feature: want start\n\n" + usage
 	cases := []struct {
 		name string
 		args []string
@@ -43,6 +51,23 @@ func TestRunReportsTheUsage(t *testing.T) {
 			"with a command's unknown flag",
 			[]string{"handover", "--to", "qa"},
 			result{code: 2, stderr: "flag provided but not defined: -to\n" + handoverUsage},
+		},
+		{"with feature alone", []string{"feature"}, result{code: 2, stderr: wantStart}},
+		{
+			"with feature's unknown command",
+			[]string{"feature", "end"},
+			result{code: 2, stderr: wantStart},
+		},
+		{"with feature start's -h", []string{"feature", "start", "-h"}, result{stderr: startUsage}},
+		{
+			"with feature start's unknown flag before the slug",
+			[]string{"feature", "start", "--note", "brief.md", "demo-1"},
+			result{code: 2, stderr: "flag provided but not defined: -note\n" + startUsage},
+		},
+		{
+			"with feature start's unknown flag after the slug",
+			[]string{"feature", "start", "demo-1", "--note", "brief.md"},
+			result{code: 2, stderr: "flag provided but not defined: -note\n" + startUsage},
 		},
 		{"with status's -h", []string{"status", "-h"}, result{stderr: "Usage of baton status:\n"}},
 		{"with wait's -h", []string{"wait", "-h"}, result{stderr: "Usage of baton wait:\n"}},

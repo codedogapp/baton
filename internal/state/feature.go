@@ -14,9 +14,12 @@ const slugChars = "abcdefghijklmnopqrstuvwxyz0123456789"
 
 // Feature is a feature's state.
 type Feature struct {
-	// Slug names the feature: its folder in baton's folder and, later, its branch and its tmux
-	// session.
+	// Slug names the feature: its folder in baton's folder, and its branch and its tmux session.
 	Slug string `json:"slug"`
+	// Branch is the feature's branch, which its worktree holds.
+	Branch string `json:"branch,omitempty"`
+	// Worktree is the absolute path of the feature's worktree, where its roles work.
+	Worktree string `json:"worktree,omitempty"`
 	// Flow is where the feature stands in the flow.
 	Flow flow.State `json:"flow"`
 	// Work is the holder's work: the last note, since each note goes to the holder after the

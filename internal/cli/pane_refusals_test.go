@@ -29,7 +29,6 @@ func TestPaneRefusesAndWritesNothing(t *testing.T) {
 	before := snapshot(t, store.Dir)
 	outside := t.TempDir()
 	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(outside))
-	t.Setenv("LC_ALL", "C")
 
 	cases := []struct {
 		name   string

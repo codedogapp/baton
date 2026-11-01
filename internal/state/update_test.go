@@ -120,7 +120,7 @@ func TestUpdateKeepsTheFieldsItDoesntKnow(t *testing.T) {
 	store := holding(t, `{
   "format": 1,
   "slug": "demo-1",
-  "branch": "baton/demo-1",
+  "ticket": "DEMO-1",
   "flow": {"holder": "lead", "status": "running", "round": 0, "cap": 3, "extra": 0},
   "sessions": {"lead": "1"}
 }`)
@@ -134,7 +134,7 @@ func TestUpdateKeepsTheFieldsItDoesntKnow(t *testing.T) {
 	}
 
 	got := read(t, featureFile(store))
-	for _, want := range []string{`"holder": "engineer"`, `"branch": "baton/demo-1"`, `"lead": "1"`} {
+	for _, want := range []string{`"holder": "engineer"`, `"ticket": "DEMO-1"`, `"lead": "1"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the feature file holds\n%s\nwant %s in it", got, want)
 		}

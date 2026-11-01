@@ -8,6 +8,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
+
+	"github.com/codedogapp/baton/internal/tmux"
 )
 
 // Env is what a command gets from the process that runs it.
@@ -21,6 +23,16 @@ type Env struct {
 	// Exec replaces the process with the program at the path, as syscall.Exec does, so it
 	// returns only if it fails.
 	Exec func(path string, args, env []string) error
+	// Executable returns the path of baton's own program, which a feature's panes run, as
+	// os.Executable does.
+	Executable func() (string, error)
+	// Tmux makes the features' tmux sessions on the user's tmux server.
+	Tmux SessionMaker
+}
+
+// SessionMaker makes tmux sessions, as tmux.Server does.
+type SessionMaker interface {
+	NewSession(ctx context.Context, session tmux.Session) error
 }
 
 // The exit codes of a command that didn't run to its end.
@@ -33,10 +45,11 @@ const (
 const usage = `Usage: baton <command> [flags]
 
 Commands:
-  handover  hand the feature over to the next role, with a note
-  pane      wait for the role's first work, then become the role's copilot
-  status    list the repo's features, with their holder, round and status
-  wait      wait for the role's next work, then pick it up and print it
+  feature start  start a feature from a brief: its branch, its worktree and its tmux session
+  handover       hand the feature over to the next role, with a note
+  pane           wait for the role's first work, then become the role's copilot
+  status         list the repo's features, with their holder, round and status
+  wait           wait for the role's next work, then pick it up and print it
 
 Run baton <command> -h for the command's flags.
 `
@@ -56,6 +69,8 @@ func Run(ctx context.Context, env Env) int {
 	}
 
 	switch name, args := env.Args[0], env.Args[1:]; name {
+	case "feature":
+		return runFeature(ctx, env, args)
 	case "handover":
 		return exit(env.Stderr, name, handover(ctx, env, args))
 	case "pane":

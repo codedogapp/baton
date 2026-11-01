@@ -47,7 +47,17 @@ type Pane struct {
 	Command []string
 }
 
-var sessionName = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+// A session's name, and a character that a name can't hold.
+var (
+	sessionName = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+	notInName   = regexp.MustCompile(`[^A-Za-z0-9_-]`)
+)
+
+// Name returns the text as a session's name, with an underscore for each character that a name
+// can't hold, such as a dot.
+func Name(text string) string {
+	return notInName.ReplaceAllString(text, "_")
+}
 
 // NewSession makes the session, detached, with a window of its own that tiles the panes and shows
 // their titles in their top borders. It sets options on that window alone. If anything fails once
