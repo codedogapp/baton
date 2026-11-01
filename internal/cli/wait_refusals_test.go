@@ -80,15 +80,24 @@ func TestWaitRefusesAndWritesNothing(t *testing.T) {
 			`unexpected argument "now"`,
 		},
 		{
-			"outside a pane", linked,
+			"outside a pane", linked, nil, nil,
+			"want BATON_ROLE: run it in a pane that baton started, which names its role there\n",
+		},
+		{
+			"without its feature", linked,
 			map[string]string{"BATON_ROLE": "lead"},
 			nil,
-			"run it in a role's pane, where BATON_ROLE and BATON_FEATURE name the role and " +
-				"the feature\n",
+			"want BATON_FEATURE: the lead's pane names its feature there\n",
 		},
 		{
 			"with an unknown role", linked, paneOf("boss"), nil,
 			`unknown role "boss" in BATON_ROLE` + "\n",
+		},
+		{
+			"in the orchestrator's pane, with a feature", linked,
+			paneOf(flow.RoleOrchestrator),
+			nil,
+			"the orchestrator's pane names no feature, but BATON_FEATURE names demo-1\n",
 		},
 		{
 			"of a feature that lost its work", linked,

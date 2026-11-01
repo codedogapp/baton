@@ -113,17 +113,12 @@ func parseStart(env Env, args []string) (slug, brief string, err error) {
 	flags := newFlags(env, "feature start")
 	briefPath := flags.String("brief", "", "the `file` with the brief for the lead (required)")
 
-	if err := flags.Parse(args); err != nil {
-		return "", "", usageError{err}
+	slug, err = parseSlug(flags, args)
+	if err == nil && slug == "" {
+		err = errors.New("want the feature's slug: baton feature start <slug> --brief <file>")
 	}
 
-	if flags.NArg() == 0 {
-		return "", "", errors.New(
-			"want the feature's slug: baton feature start <slug> --brief <file>")
-	}
-
-	slug = flags.Arg(0)
-	if err := parse(flags, flags.Args()[1:]); err != nil {
+	if err != nil {
 		return "", "", err
 	}
 

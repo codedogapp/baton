@@ -46,7 +46,7 @@ const usage = `Usage: baton <command> [flags]
 
 Commands:
   feature start  start a feature from a brief: its branch, its worktree and its tmux session
-  handover       hand the feature over to the next role, with a note
+  handover       hand a feature over to the next role, with a note
   pane           wait for the role's first work, then become the role's copilot
   status         list the repo's features, with their holder, round and status
   wait           wait for the role's next work, then pick it up and print it
@@ -109,6 +109,25 @@ func parse(flags *flag.FlagSet, args []string) error {
 	}
 
 	return nil
+}
+
+// parseSlug parses the command's flags, which may come before or after a feature's slug, and
+// returns the slug, or "" if there is none. It refuses any argument after the slug.
+func parseSlug(flags *flag.FlagSet, args []string) (string, error) {
+	if err := flags.Parse(args); err != nil {
+		return "", usageError{err}
+	}
+
+	if flags.NArg() == 0 {
+		return "", nil
+	}
+
+	slug := flags.Arg(0)
+	if err := parse(flags, flags.Args()[1:]); err != nil {
+		return "", err
+	}
+
+	return slug, nil
 }
 
 // exit reports the command's error, if any, and returns the process's exit code.
