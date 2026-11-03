@@ -42,6 +42,7 @@ Never report a step as done before `mise run check` has passed, and say which ga
 
 - Repo: [`codedogapp/baton`](https://github.com/codedogapp/baton), public. Default branch `main`.
 - One step, one branch (`step/<id>`, ids from plan §0) and one PR. The lead squash-merges once CI is green, with an explicit subject and body: `gh pr merge --squash --subject "…" --body "…"`.
+- Renovate's pull requests: the lead squash-merges a green one once its release notes show no breaking change and its pins match their tags, and asks the user about a red one or a major update (the user's OK of 2026-11-03).
 - Commit messages and PR titles follow Conventional Commits (`feat(flow): …`, `fix: …`, `build: …`, `ci: …`, `docs: …`): an imperative subject of 72 characters or fewer, and a body that says why when it isn't obvious.
 - **No AI attribution.** Never add `Co-authored-by` trailers for Copilot or any other AI agent.
 - Never write close, fix or resolve next to an issue or PR number unless the PR is meant to close it.
