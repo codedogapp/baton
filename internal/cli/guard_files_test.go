@@ -8,6 +8,7 @@ import (
 
 	"github.com/codedogapp/baton/internal/cli"
 	"github.com/codedogapp/baton/internal/flow"
+	"github.com/codedogapp/baton/internal/plugin"
 )
 
 // TestGuardHookKeepsTheFileToolsOutOfBatonsFolder denies a role's create and edit of a file in
@@ -66,6 +67,68 @@ func TestGuardHookKeepsTheFileToolsOutOfBatonsFolder(t *testing.T) {
 				wantGuard(t, guardHook(t, linked, paneOf(flow.RoleReviewer), input), want)
 			})
 		}
+	}
+}
+
+// TestGuardHookKeepsTheFileToolsOutOfBatonsCache denies a role's create and edit of a file in
+// baton's cache folder, which holds the plugin whose hook runs the guard, however the path names
+// it (decision 53). It lets them write beside it.
+func TestGuardHookKeepsTheFileToolsOutOfBatonsCache(t *testing.T) {
+	_, cache := standIn(t)
+	_, linked := repos(t)
+
+	dir, err := plugin.Write(cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	link := filepath.Join(linked, "cache")
+	if err := os.Symlink(cache, link); err != nil {
+		t.Fatal(err)
+	}
+
+	hooks := filepath.Join(dir, hooksFile)
+	cases := []struct {
+		name string
+		path string // The path in the tool's arguments.
+		want string // The path that the reason names, or "" to let the tool run.
+	}{
+		{"the plugin's hooks", hooks, hooks},
+		{"baton's cache folder", cache, cache},
+		{"a file in a new folder", cache + "/plugin-0/x.md", cache + "/plugin-0/x.md"},
+		{"a symlink", link + "/x.md", link + "/x.md"},
+		{"a folder beside it", cache + "-old/x.md", ""},
+	}
+
+	for _, test := range cases {
+		for _, tool := range []string{"create", "edit"} {
+			t.Run(tool+" "+test.name, func(t *testing.T) {
+				want := ""
+				if test.want != "" {
+					want = guardStopped + test.want + " is in baton's cache folder " + cache +
+						", which only baton writes: it holds the plugin whose hook runs this guard."
+				}
+
+				input := guardInput(t, linked, tool, map[string]any{"path": test.path})
+				wantGuard(t, guardHook(t, linked, paneOf(flow.RoleEngineer), input), want)
+			})
+		}
+	}
+}
+
+// TestGuardHookFailsWithoutTheCacheFolder fails, and so denies a file tool, when it can't find
+// the user's cache folder, which holds the plugin.
+func TestGuardHookFailsWithoutTheCacheFolder(t *testing.T) {
+	_, linked := repos(t)
+	t.Setenv("HOME", "")
+	t.Setenv("XDG_CACHE_HOME", "")
+
+	input := guardInput(t, linked, "create", map[string]any{"path": linked + "/x.md"})
+	got := guardHook(t, linked, paneOf(flow.RoleLead), input)
+
+	want := "baton hook guard: find the cache folder: "
+	if got.code != 1 || got.stdout != "" || !strings.HasPrefix(got.stderr, want) {
+		t.Errorf("got %+v; want exit code 1 and %q", got, want)
 	}
 }
 

@@ -36,21 +36,16 @@ func TestWriteWritesThePlugin(t *testing.T) {
 		t.Errorf("the cache folder's mode is %v, want 0700: only the user's", info.Mode().Perm())
 	}
 
-	plugin, err := fs.Sub(files, root)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	same(t, dir, plugin)
+	same(t, dir, thePlugin(t))
 	only(t, cache, filepath.Base(dir))
 }
 
-func TestWriteKeepsTheFolderItFinds(t *testing.T) {
+func TestWriteKeepsTheFolderThatHoldsThePlugin(t *testing.T) {
 	cache := t.TempDir()
 	first := take(Write(cache))(t)
 
-	mark := filepath.Join(first, "mark")
-	if err := os.WriteFile(mark, nil, 0o600); err != nil {
+	before, err := os.Stat(first)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -58,15 +53,59 @@ func TestWriteKeepsTheFolderItFinds(t *testing.T) {
 		t.Errorf("the second Write = %s, want the first's, %s", again, first)
 	}
 
-	if _, err := os.Stat(mark); err != nil {
+	if after, err := os.Stat(first); err != nil || !os.SameFile(after, before) {
 		t.Errorf("the second Write replaced the folder: %v", err)
 	}
 
+	same(t, first, thePlugin(t))
 	only(t, cache, filepath.Base(first))
 }
 
 func TestWriteByManyPanesAtOnce(t *testing.T) {
 	cache := t.TempDir()
+	dir := atOnce(t, cache)
+
+	same(t, dir, thePlugin(t))
+	only(t, cache, filepath.Base(dir))
+}
+
+func TestWriteNamesTheFolderByItsFiles(t *testing.T) {
+	cache := t.TempDir()
+
+	first := take(write(cache, tree("a.md", "one")))(t)
+	same(t, first, fstest.MapFS{"a.md": {Data: []byte("one")}})
+
+	if again := take(write(cache, tree("a.md", "one")))(t); again != first {
+		t.Errorf("the same files went to %s, then to %s", first, again)
+	}
+
+	// Each pair has other files, which a hash of their text alone would mix up, since the text
+	// would be the same if one of the parts that ends a path, a length or a file were missing.
+	for number, pair := range [][2]fstest.MapFS{
+		{tree("a.md", "one"), tree("a.md", "two")},                       // Other contents.
+		{tree("a.md", "one"), tree("b.md", "one")},                       // Another path.
+		{tree("a1", "xx", "b", "zzzzzzz"), tree("a", "xxb7\x00zzzzzzz")}, // A path's end.
+		{tree("a", "2", "bcd", "yyyyyyy"), tree("a", "bcd\x007yyyyyyy")}, // A length's end.
+		{tree("a", "x", "b", "y"), tree("a", "", "xb", "y")},             // A file's end.
+	} {
+		if one, other := take(
+			write(cache, pair[0]),
+		)(
+			t,
+		), take(
+			write(cache, pair[1]),
+		)(
+			t,
+		); one == other {
+			t.Errorf("both trees of pair %d went to %s", number, one)
+		}
+	}
+}
+
+// atOnce has many panes write the plugin into the cache at once, and returns the folder that each
+// of them got: the same for each.
+func atOnce(t *testing.T, cache string) string {
+	t.Helper()
 
 	const panes = 8
 
@@ -85,45 +124,27 @@ func TestWriteByManyPanesAtOnce(t *testing.T) {
 		}
 	}
 
+	return dirs[0]
+}
+
+// thePlugin returns the plugin's files, as the binary holds them.
+func thePlugin(t *testing.T) fs.FS {
+	t.Helper()
+
 	plugin, err := fs.Sub(files, root)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	same(t, dirs[0], plugin)
-	only(t, cache, filepath.Base(dirs[0]))
+	return plugin
 }
 
-func TestWriteNamesTheFolderByItsFiles(t *testing.T) {
-	cache := t.TempDir()
+// must fails the test on the error.
+func must(t *testing.T, err error) {
+	t.Helper()
 
-	first := take(write(cache, tree("a.md", "one")))(t)
-	same(t, first, fstest.MapFS{"a.md": {Data: []byte("one")}})
-
-	if again := take(write(cache, tree("a.md", "one")))(t); again != first {
-		t.Errorf("the same files went to %s, then to %s", first, again)
-	}
-
-	// Each pair has other files, which a hash of their text alone would mix up, since the text
-	// would be the same if one of the parts that ends a path, a length or a file were missing.
-	for number, pair := range [][2]fstest.MapFS{
-		{tree("a.md", "one"), tree("a.md", "two")},                       // Other contents.
-		{tree("a.md", "one"), tree("b.md", "one")},                       // Another path.
-		{tree("a1", "xx", "b", "z"), tree("a", "xxfiles/b1\x00z")},       // A path's end.
-		{tree("a", "2", "bcd", "y"), tree("a", "files/bcd\x001y")},       // A length's end.
-		{tree("a", "files/x", "b", "y"), tree("a", "", "xfiles/b", "y")}, // A file's end.
-	} {
-		if one, other := take(
-			write(cache, pair[0]),
-		)(
-			t,
-		), take(
-			write(cache, pair[1]),
-		)(
-			t,
-		); one == other {
-			t.Errorf("both trees of pair %d went to %s", number, one)
-		}
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

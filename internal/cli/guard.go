@@ -53,8 +53,9 @@ type guardOutput struct {
 // hookGuard is the plugin's preToolUse hook, which runs before each tool that a pane's copilot
 // calls. In a role's pane, it denies a bash script that the guard can't read, or that runs a
 // command that the guard watches other than baton's commands for a role, and a create or edit of
-// a file in baton's folder. It says nothing in the orchestrator's pane yet. Copilot denies the
-// tool when the hook fails, so baton then reports why and exits with 1 (decision 52).
+// a file in baton's folder or in baton's cache folder, which holds the plugin. It says nothing in
+// the orchestrator's pane yet. Copilot denies the tool when the hook fails, so baton then reports
+// why and exits with 1 (decisions 52 and 53).
 func hookGuard(ctx context.Context, env Env, args []string) error {
 	if err := parse(newFlags(env, "hook guard"), args); err != nil {
 		return err
@@ -128,8 +129,14 @@ func scriptReason(script string) string {
 }
 
 // pathReason returns the reason to deny a file tool's write in a role's pane, or "" to let it run:
-// a file in baton's folder, which only baton writes (decision 48).
+// a file in baton's folder, which only baton writes (decision 48), or in baton's cache folder,
+// whose plugin runs this guard (decision 53).
 func pathReason(ctx context.Context, dir, path string) (string, error) {
+	cache, err := batonCache()
+	if err != nil {
+		return "", err
+	}
+
 	store, err := openStore(ctx, dir)
 	if err != nil {
 		return "", err
@@ -144,12 +151,16 @@ func pathReason(ctx context.Context, dir, path string) (string, error) {
 		path = abs
 	}
 
-	if !within(path, store.Dir) {
-		return "", nil
+	switch {
+	case within(path, store.Dir):
+		return fmt.Sprintf("%s%s is in baton's folder %s, which only baton writes: write your "+
+			"notes in your session's files/ folder.", stopped, path, store.Dir), nil
+	case within(path, cache):
+		return fmt.Sprintf("%s%s is in baton's cache folder %s, which only baton writes: it "+
+			"holds the plugin whose hook runs this guard.", stopped, path, cache), nil
 	}
 
-	return fmt.Sprintf("%s%s is in baton's folder %s, which only baton writes: write your notes "+
-		"in your session's files/ folder.", stopped, path, store.Dir), nil
+	return "", nil
 }
 
 // within reports whether the path is the folder or lies in it, by the files that they name, so

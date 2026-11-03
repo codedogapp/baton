@@ -32,7 +32,8 @@ const envBin = "BATON_BIN"
 // The orchestrator's copilot starts at once, since the user talks to it. A role's pane waits for
 // the role's first work, then becomes the role's copilot, with that work as its first prompt
 // (decision 38). It finds copilot, writes the plugin and reads the settings before it waits, so
-// that a pane that can't start copilot never picks up work that nobody would then do.
+// that a pane that can't start copilot never picks up work that nobody would then do. After the
+// wait it checks the plugin again, which a role may have changed meanwhile (decision 53).
 func pane(ctx context.Context, env Env, args []string) error {
 	if err := parse(newFlags(env, "pane"), args); err != nil {
 		return err
@@ -65,6 +66,10 @@ func pane(ctx context.Context, env Env, args []string) error {
 
 	work, err := waitForWork(ctx, env, role, slug)
 	if err != nil {
+		return err
+	}
+
+	if dir, err = writePlugin(); err != nil {
 		return err
 	}
 
@@ -108,25 +113,41 @@ func becomeCopilot(env Env, program string, line, vars []string) error {
 	return nil
 }
 
-// prepare finds copilot and writes the plugin into baton's cache folder, and returns copilot's
-// path and the plugin's folder.
+// prepare finds copilot and writes the plugin, and returns copilot's path and the plugin's folder.
 func prepare() (program, dir string, err error) {
 	program, err = exec.LookPath("copilot")
 	if err != nil {
 		return "", "", err
 	}
 
-	cache, err := os.UserCacheDir()
-	if err != nil {
-		return "", "", fmt.Errorf("find the cache folder: %w", err)
-	}
-
-	dir, err = plugin.Write(filepath.Join(cache, cacheFolder))
+	dir, err = writePlugin()
 	if err != nil {
 		return "", "", err
 	}
 
 	return program, dir, nil
+}
+
+// writePlugin writes the plugin into baton's cache folder, unless a folder there holds it
+// already, unchanged, and returns the plugin's folder (decisions 36 and 53).
+func writePlugin() (string, error) {
+	cache, err := batonCache()
+	if err != nil {
+		return "", err
+	}
+
+	return plugin.Write(cache)
+}
+
+// batonCache returns baton's folder in the user's cache folder, which holds the plugin (decision
+// 36).
+func batonCache() (string, error) {
+	cache, err := os.UserCacheDir()
+	if err != nil {
+		return "", fmt.Errorf("find the cache folder: %w", err)
+	}
+
+	return filepath.Join(cache, cacheFolder), nil
 }
 
 // watch reads the pane's terminal, and drops what the user types there, until the terminal's

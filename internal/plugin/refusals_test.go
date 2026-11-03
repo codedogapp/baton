@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -23,10 +24,10 @@ func TestWriteRefusals(t *testing.T) {
 		cache: emptyCache,
 		want:  []string{"hash the plugin: open files: file does not exist"},
 	}, {
-		name:  "a file it can't read",
+		name:  "a symlink",
 		tree:  fstest.MapFS{root + "/agent.md": {Mode: fs.ModeSymlink, Data: []byte("gone")}},
 		cache: emptyCache,
-		want:  []string{"hash the plugin: open files/agent.md: file does not exist"},
+		want:  []string{"hash the plugin: files/agent.md isn't a regular file"},
 	}, {
 		name: "a file in the cache's place",
 		tree: plugin,
@@ -53,20 +54,28 @@ func TestWriteRefusals(t *testing.T) {
 		},
 		want: []string{"write the plugin: mkdir ", "/plugin-", ".tmp: permission denied"},
 	}, {
-		name:  "a file it can't copy",
-		tree:  fstest.MapFS{root + "/hook": {Mode: fs.ModeNamedPipe}},
+		name:  "a file whose name is too long for the disk",
+		tree:  fstest.MapFS{root + "/" + strings.Repeat("a", 256): {Data: []byte("{}")}},
 		cache: emptyCache,
-		want:  []string{"write the plugin: CopyFS files/hook: invalid argument"},
+		want:  []string{"write the plugin: open ", "/aaaa", ": file name too long"},
 	}, {
-		name: "a file in the folder's place",
+		name: "a file in the place of each name for the folder",
 		tree: plugin,
 		cache: func(t *testing.T, tree fs.FS) string {
 			cache := t.TempDir()
-			put(t, filepath.Join(cache, filepath.Base(take(write(t.TempDir(), tree))(t))))
+			name := filepath.Join(cache, filepath.Base(take(write(t.TempDir(), tree))(t)))
+
+			put(t, name)
+
+			for try := 1; try < names; try++ {
+				put(t, name+"-"+strconv.Itoa(try))
+			}
 
 			return cache
 		},
-		want: []string{"write the plugin: rename ", "/plugin-", ": not a directory"},
+		want: []string{
+			"write the plugin under any of 8 names: rename ", "/plugin-", "-7: not a directory",
+		},
 	}} {
 		t.Run(test.name, func(t *testing.T) {
 			cache := test.cache(t, test.tree)
