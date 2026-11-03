@@ -11,6 +11,7 @@ Commands:
   ask            ask the orchestrator a question, in a role's pane, then wait for the answer
   feature start  start a feature from a brief: its branch, its worktree and its tmux session
   handover       hand a feature over to the next role, with a note
+  hook guard     copilot's tool hook: deny a role what the guard watches, before it runs
   hook stop      copilot's stop hook: send a pane's copilot that stops too soon back to work
   pane           become the pane's copilot: the orchestrator's, or the role's once it has work
   status         list the repo's features, with their holder, round and status
@@ -37,7 +38,7 @@ const handoverUsage = `Usage of baton handover:
 
 func TestRunReportsTheUsage(t *testing.T) {
 	wantStart := "baton feature: want start\n\n" + usage
-	wantStop := "baton hook: want stop\n\n" + usage
+	wantHook := "baton hook: want guard or stop\n\n" + usage
 	cases := []struct {
 		name string
 		args []string
@@ -65,11 +66,16 @@ func TestRunReportsTheUsage(t *testing.T) {
 			result{code: 2, stderr: wantStart},
 		},
 		{"with feature start's -h", []string{"feature", "start", "-h"}, result{stderr: startUsage}},
-		{"with hook alone", []string{"hook"}, result{code: 2, stderr: wantStop}},
+		{"with hook alone", []string{"hook"}, result{code: 2, stderr: wantHook}},
 		{
 			"with hook's unknown command",
 			[]string{"hook", "start"},
-			result{code: 2, stderr: wantStop},
+			result{code: 2, stderr: wantHook},
+		},
+		{
+			"with hook guard's -h",
+			[]string{"hook", "guard", "-h"},
+			result{stderr: "Usage of baton hook guard:\n"},
 		},
 		{
 			"with hook stop's -h",

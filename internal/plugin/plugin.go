@@ -1,6 +1,7 @@
 // Package plugin holds baton's plugin for Copilot CLI, which the binary embeds and writes to its
-// cache for --plugin-dir: the agents of the orchestrator and the roles, and the agentStop hook,
-// which runs baton hook stop (decisions 11, 36, 37 and 47).
+// cache for --plugin-dir: the agents of the orchestrator and the roles, the preToolUse hook, which
+// runs baton hook guard, and the agentStop hook, which runs baton hook stop (decisions 11, 36, 37,
+// 47 and 52).
 package plugin
 
 import (
