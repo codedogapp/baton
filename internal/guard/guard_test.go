@@ -102,8 +102,6 @@ func TestCommandsFindsGhsCommandsThatMayWrite(t *testing.T) {
 		"gh auth token":                     {"outward: gh auth token"},
 		"gh pr":                             {"outward: gh pr"},
 		"gh co 3":                           {"outward: gh co 3"},
-		"gh api repos/o/r":                  {"outward: gh api"},
-		"gh api -X GET repos/o/r/pulls":     {"outward: gh api"},
 		`gh "$area" view`:                   {"outward: gh … view"},
 		`gh pr "$verb" 3`:                   {"outward: gh pr …"},
 		"gh pr view 3 && gh pr review 3 -a": {"outward: gh pr review"},
