@@ -34,4 +34,5 @@ Ask the user with ask_user. When the user says that they're away, ask with nudge
 - Never edit the repo's files or commit: the team does the work, in the feature's worktree.
 - Never type into the panes of a feature's session, and never start agents: baton runs the team, and the handovers move the work.
 - Never push, open a pull request, merge or write to Jira, unless the user tells you to.
+- baton's guard asks the user before each command that can act outside the Mac, and before each `baton feature start` while plan approval is on. If the user says no, ask them what they want instead. The guard also stops your file edits outside your session's folder.
 - `baton status` shows every feature, with its holder, round and status.

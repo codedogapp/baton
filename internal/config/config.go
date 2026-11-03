@@ -21,7 +21,7 @@ const (
 	file   = "config.json"
 )
 
-// baton's own settings, where the config file gives none (decisions 7, 13 and 41).
+// baton's own settings, where the config file gives none (decisions 7, 8, 13 and 41).
 const (
 	model        = "claude-opus-5.5"
 	roundCap     = 3
@@ -38,6 +38,14 @@ type Settings struct {
 	RoundCap int `json:"roundCap"`
 	// BranchPrefix comes before the slug in the name of a feature's branch (decision 41).
 	BranchPrefix string `json:"branchPrefix"`
+	// PlanApproval makes the user approve each feature start in the orchestrator's pane (decision
+	// 8). A nil one keeps the one below it, so that false can turn it off.
+	PlanApproval *bool `json:"planApproval"`
+}
+
+// PlanApprovalOn reports whether the user approves each feature start in the orchestrator's pane.
+func (s Settings) PlanApprovalOn() bool {
+	return s.PlanApproval == nil || *s.PlanApproval
 }
 
 // Role is a role's settings for its copilot, each one a flag of copilot's (fact 31).
@@ -53,8 +61,8 @@ type Role struct {
 	ExtraTools []string `json:"extraTools"`
 }
 
-// defaults returns baton's own settings: every role on the same model, and the orchestrator with
-// the user's nudge tools (decision 45).
+// defaults returns baton's own settings: every role on the same model, the orchestrator with the
+// user's nudge tools (decision 45), and plan approval on.
 func defaults() Settings {
 	roles := map[flow.Role]Role{flow.RoleOrchestrator: {
 		Model: model, ExtraTools: []string{"nudge-ask", "nudge-report"},
@@ -66,7 +74,9 @@ func defaults() Settings {
 		roles[role] = Role{Model: model}
 	}
 
-	return Settings{Roles: roles, RoundCap: roundCap, BranchPrefix: branchPrefix}
+	return Settings{
+		Roles: roles, RoundCap: roundCap, BranchPrefix: branchPrefix, PlanApproval: new(true),
+	}
 }
 
 // Load reads the config file in the user's config folder, and returns the settings for the repo
@@ -118,6 +128,7 @@ func (s Settings) with(layer Settings) Settings {
 		Roles:        roles,
 		RoundCap:     cmp.Or(layer.RoundCap, s.RoundCap),
 		BranchPrefix: cmp.Or(layer.BranchPrefix, s.BranchPrefix),
+		PlanApproval: cmp.Or(layer.PlanApproval, s.PlanApproval),
 	}
 }
 

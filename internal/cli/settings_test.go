@@ -74,9 +74,9 @@ func TestPaneGivesTheOrchestratorItsSettings(t *testing.T) {
 		path: copilot,
 		args: []string{
 			"copilot", "--agent", "baton:orchestrator", "--plugin-dir", pluginIn(t, cache),
-			"--model", "claude-sonnet-5.5", "--max-ai-credits", "30", "--available-tools",
-			"bash", "read_bash", "stop_bash", "list_bash", "view", "create", "edit", "grep",
-			"glob", "web_fetch", "ask_user",
+			"--model", "claude-sonnet-5.5", "--max-ai-credits", "30", "--allow-all",
+			"--available-tools", "bash", "read_bash", "stop_bash", "list_bash", "view", "create",
+			"edit", "grep", "glob", "web_fetch", "ask_user",
 		},
 		env: append(withoutVars("BATON_BIN"), "BATON_BIN="+self),
 	})

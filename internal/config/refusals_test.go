@@ -56,12 +56,13 @@ func TestLoadRefusesSettingsThatBatonCantUse(t *testing.T) {
 
 func TestLoadRefusesAFileThatIsntSettings(t *testing.T) {
 	for content, want := range map[string]string{
-		``:                  "unexpected EOF",
-		`{`:                 "unexpected EOF",
-		`[]`:                "unmarshal JSON array",
-		`{"roundCap": "3"}`: `within "/roundCap"`,
-		`{"rounds": 2}`:     `unknown object member name "rounds"`,
-		`{"RoundCap": 2}`:   `unknown object member name "RoundCap"`,
+		``:                       "unexpected EOF",
+		`{`:                      "unexpected EOF",
+		`[]`:                     "unmarshal JSON array",
+		`{"roundCap": "3"}`:      `within "/roundCap"`,
+		`{"planApproval": "no"}`: `within "/planApproval"`,
+		`{"rounds": 2}`:          `unknown object member name "rounds"`,
+		`{"RoundCap": 2}`:        `unknown object member name "RoundCap"`,
 		`{"roles": {"lead": {"effort": "high"}}}`: `unknown object member name "effort" within "/roles/lead"`,
 		`{"repos": {"github.com/a/a": {"repos": {}}}}`: `unknown object member name "repos" ` +
 			`within "/repos/github.com~1a~1a"`,

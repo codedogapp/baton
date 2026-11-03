@@ -171,6 +171,7 @@ func own() config.Settings {
 		},
 		RoundCap:     3,
 		BranchPrefix: "feature/",
+		PlanApproval: new(true),
 	}
 }
 

@@ -4,6 +4,7 @@
 package guard
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/codedogapp/baton/internal/bash"
@@ -42,6 +43,10 @@ var always = map[string]Kind{
 	"gemini": Agent, "opencode": Agent,
 }
 
+// batonGroups are the first words of baton's commands of two words, such as feature start, which
+// the guard names by both words.
+var batonGroups = []string{"feature", "hook"}
+
 // Commands returns the watched commands that the script runs, in the order of bash.Calls, or an
 // error if the script doesn't parse.
 func Commands(script string) ([]Command, error) {
@@ -79,12 +84,22 @@ func classify(program string, args []string) (Command, bool) {
 	case program == "gh":
 		return gh(args)
 	case program == "baton":
-		return Command{Baton, name("baton", args[:min(1, len(args))]...)}, true
+		return Command{Baton, name("baton", args[:batonWords(args)]...)}, true
 	case strings.Contains(program, bash.Dynamic):
 		return Command{Unknown, name(program, args[:min(1, len(args))]...)}, true
 	default:
 		return Command{}, false
 	}
+}
+
+// batonWords returns how many of baton's arguments name its command: two for a command of two
+// words, else one, if there are as many.
+func batonWords(args []string) int {
+	if len(args) > 1 && slices.Contains(batonGroups, args[0]) {
+		return 2
+	}
+
+	return min(1, len(args))
 }
 
 // name returns a command's name: its words, with … for each part that only the run decides.
