@@ -65,10 +65,13 @@ func Commands(script string) ([]Command, error) {
 // watches it. A program such as git-push names git's command itself.
 func classify(program string, args []string) (Command, bool) {
 	kind, watched := always[program]
+	client, http := clients[program]
 
 	switch {
 	case watched:
 		return Command{kind, program}, true
+	case http:
+		return Command{Outward, program}, writes(client, args)
 	case program == "git":
 		return git(args)
 	case strings.HasPrefix(program, "git-"):

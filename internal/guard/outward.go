@@ -51,14 +51,15 @@ func git(args []string) (Command, bool) {
 }
 
 // gh returns gh's command in its arguments, named by its first two words, and whether it may act
-// outside the Mac: any command but those that only read, or one that only the run decides. gh api
-// counts as one that writes.
+// outside the Mac: any command but those that only read, or one that only the run decides, and
+// gh api if it writes. GraphQL posts its reads too, so gh api graphql counts as one that writes.
 func gh(args []string) (Command, bool) {
 	switch {
 	case len(args) == 0 || slices.Contains(ghReads, args[0]):
 		return Command{}, false
 	case args[0] == "api":
-		return Command{Outward, "gh api"}, true
+		return Command{Outward, "gh api"},
+			slices.Contains(args, "graphql") || writes(ghAPI, args[1:])
 	default:
 		return Command{Outward, name("gh", args[:min(2, len(args))]...)},
 			len(args) < 2 || !slices.Contains(ghReading, args[1]) ||
