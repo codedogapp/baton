@@ -21,7 +21,7 @@ type Env struct {
 	Getenv func(string) string // Reads the process's environment.
 	Dir    string              // The working folder; empty for the process's own.
 	// Stdin is the pane's terminal, which baton pane reads while it waits, or the hook's input,
-	// which baton hook stop reads.
+	// which baton's hooks read.
 	Stdin  io.Reader
 	Stdout io.Writer
 	Stderr io.Writer
@@ -59,6 +59,7 @@ Commands:
   ask            ask the orchestrator a question, in a role's pane, then wait for the answer
   feature start  start a feature from a brief: its branch, its worktree and its tmux session
   handover       hand a feature over to the next role, with a note
+  hook guard     copilot's tool hook: deny a role what the guard watches, before it runs
   hook stop      copilot's stop hook: send a pane's copilot that stops too soon back to work
   pane           become the pane's copilot: the orchestrator's, or the role's once it has work
   status         list the repo's features, with their holder, round and status
@@ -84,7 +85,7 @@ var commands = map[string]commandFunc{
 // groups are baton's commands of two words, by their first word, then their second.
 var groups = map[string]map[string]commandFunc{
 	"feature": {"start": startFeature},
-	"hook":    {"stop": hookStop},
+	"hook":    {"guard": hookGuard, "stop": hookStop},
 }
 
 // usageError is a command line that doesn't parse. The flag package has reported it.

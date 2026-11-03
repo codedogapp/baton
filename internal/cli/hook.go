@@ -54,8 +54,8 @@ func hookStop(ctx context.Context, env Env, args []string) error {
 	}
 
 	var input stopInput
-	if err := json.UnmarshalDecode(jsontext.NewDecoder(env.Stdin), &input); err != nil {
-		return fmt.Errorf("read the hook's input: %w", err)
+	if err := readInput(env, &input); err != nil {
+		return err
 	}
 
 	if input.Active {
@@ -80,6 +80,16 @@ func hookStop(ctx context.Context, env Env, args []string) error {
 	output := stopOutput{Decision: "block", Reason: reason}
 
 	return json.MarshalEncode(jsontext.NewEncoder(env.Stdout), output)
+}
+
+// readInput reads the hook's input, a JSON object, into the value, without waiting for the end of
+// the input, which copilot might keep open.
+func readInput(env Env, input any) error {
+	if err := json.UnmarshalDecode(jsontext.NewDecoder(env.Stdin), input); err != nil {
+		return fmt.Errorf("read the hook's input: %w", err)
+	}
+
+	return nil
 }
 
 // stopReason returns the reason that sends the role's copilot back to work, or "" to let it stop.

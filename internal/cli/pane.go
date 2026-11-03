@@ -25,7 +25,7 @@ const cacheFolder = "baton"
 const allowAll = "COPILOT_ALLOW_ALL"
 
 // envBin is the variable that names baton's own program in every pane's copilot, for the
-// plugin's agentStop hook, which runs baton hook stop (decision 47).
+// plugin's hooks, which run baton hook guard and baton hook stop (decisions 47 and 52).
 const envBin = "BATON_BIN"
 
 // pane becomes the pane's copilot, with the role's settings from the config file (decision 49).
