@@ -3,8 +3,10 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
+	"github.com/codedogapp/baton/internal/config"
 	"github.com/codedogapp/baton/internal/flow"
 	"github.com/codedogapp/baton/internal/repo"
 	"github.com/codedogapp/baton/internal/state"
@@ -50,4 +52,20 @@ func openStore(ctx context.Context, dir string) (state.Store, error) {
 	}
 
 	return state.Store{Dir: filepath.Join(common, stateFolder)}, nil
+}
+
+// loadSettings returns baton's settings for the repo that holds the folder, from the config file
+// in the user's config folder, by the URL of the repo's origin remote (decision 49).
+func loadSettings(ctx context.Context, dir string) (config.Settings, error) {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return config.Settings{}, fmt.Errorf("find the config folder: %w", err)
+	}
+
+	remote, err := repo.Remote(ctx, dir)
+	if err != nil {
+		return config.Settings{}, err
+	}
+
+	return config.Load(configDir, remote)
 }

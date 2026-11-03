@@ -1,6 +1,7 @@
 package cli_test
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -21,7 +22,11 @@ const slug = "demo-1"
 
 // TestMain runs git without the user's config, in the C locale, with a test author: baton's own
 // git too, which makes the features' branches and worktrees. It clears the variables that git sets
-// for its hooks, such as GIT_DIR, which would point git at the repo that runs the hook.
+// for its hooks, such as GIT_DIR, which would point git at the repo that runs the hook. It gives
+// the tests an empty home folder, which holds the user's config and cache folders, since it
+// clears the XDG ones, so that baton reads none of the user's files, such as its config file. The
+// tests share that folder, so a test that writes there, as a config file, moves it into one of its
+// own first: one that leaves anything there fails them all.
 func TestMain(m *testing.M) {
 	var errs []error
 
@@ -40,12 +45,25 @@ func TestMain(m *testing.M) {
 		errs = append(errs, os.Setenv(name, value))
 	}
 
+	home, err := os.MkdirTemp("", "baton-test-home-")
+	errs = append(errs, err, os.Setenv("HOME", home), os.Unsetenv("XDG_CONFIG_HOME"),
+		os.Unsetenv("XDG_CACHE_HOME"))
+
 	if err := errors.Join(errs...); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
-	os.Exit(m.Run())
+	code := m.Run()
+
+	if err := os.Remove(home); err != nil {
+		code = cmp.Or(code, 1)
+		_ = os.RemoveAll(home)
+
+		fmt.Fprintln(os.Stderr, "a test left files in the tests' home folder:", err)
+	}
+
+	os.Exit(code)
 }
 
 // repos makes a git repo with a commit, and a linked worktree next to it, like a feature's. It

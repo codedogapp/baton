@@ -6,16 +6,11 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/codedogapp/baton/internal/config"
 	"github.com/codedogapp/baton/internal/flow"
 	"github.com/codedogapp/baton/internal/repo"
 	"github.com/codedogapp/baton/internal/state"
 	"github.com/codedogapp/baton/internal/tmux"
-)
-
-// Every feature gets these until the config file sets them (decisions 13, 16 and 41).
-const (
-	roundCap     = 3          // The engineer's passes that a brief gets.
-	branchPrefix = "feature/" // The feature's branch is its slug after this.
 )
 
 // team is the roles that work on a feature, in the order of their panes.
@@ -59,19 +54,25 @@ func startFeature(ctx context.Context, env Env, args []string) error {
 
 // newLaunch returns where the feature's parts go: its state in the repo's baton folder, and its
 // worktree next to the repo's main worktree, with names after the main worktree's folder
-// (decision 41).
+// (decision 41). The config file gives its round cap and its branch's prefix (decision 49).
 func newLaunch(ctx context.Context, env Env, slug string) (launch, error) {
 	self, err := env.Executable()
 	if err != nil {
 		return launch{}, fmt.Errorf("find baton's own program: %w", err)
 	}
 
-	// Both look for the repo from the working folder, so they fail together, as outside a repo.
+	// The first two look for the repo from the working folder, so they fail together, as outside
+	// a repo.
 	store, err := openStore(ctx, env.Dir)
 
 	var mainDir string
 	if err == nil {
 		mainDir, err = repo.MainWorktree(ctx, env.Dir)
+	}
+
+	var settings config.Settings
+	if err == nil {
+		settings, err = loadSettings(ctx, mainDir)
 	}
 
 	if err != nil {
@@ -81,12 +82,12 @@ func newLaunch(ctx context.Context, env Env, slug string) (launch, error) {
 	name := filepath.Base(mainDir) + "-" + slug
 	worktree := repo.Worktree{
 		Path:   filepath.Join(filepath.Dir(mainDir), name),
-		Branch: branchPrefix + slug,
+		Branch: settings.BranchPrefix + slug,
 		Base:   "HEAD",
 	}
 
 	return launch{
-		store: store, slug: slug, mainDir: mainDir, worktree: worktree,
+		store: store, slug: slug, rounds: settings.RoundCap, mainDir: mainDir, worktree: worktree,
 		session: tmux.Session{
 			Name:  tmux.Name("baton-" + name),
 			Dir:   worktree.Path,
@@ -119,6 +120,7 @@ type launch struct {
 	store    state.Store
 	slug     string
 	brief    []byte
+	rounds   int // The round cap: the engineer's passes that the brief gets (decision 13).
 	mainDir  string
 	worktree repo.Worktree
 	session  tmux.Session
@@ -128,7 +130,7 @@ type launch struct {
 // branch and the worktree, then the tmux session. If a part fails, it undoes the parts it made,
 // even after Ctrl-C (decision 40).
 func (start launch) run(ctx context.Context, sessions Server) error {
-	now, err := flow.Start(roundCap)
+	now, err := flow.Start(start.rounds)
 	if err == nil {
 		err = start.store.Create(state.Feature{
 			Slug:     start.slug,
