@@ -9,6 +9,9 @@ import (
 	"github.com/codedogapp/baton/internal/flow"
 )
 
+// session is the ID of the copilot session in the hook's input, which names its folder.
+const session = "0b5d2c4e"
+
 // The reasons that baton hook guard denies a role's tool with (decision 52).
 const (
 	guardStopped = "baton's guard stopped this call, and none of it ran. "
@@ -20,6 +23,9 @@ const (
 		"`baton ask` and `baton status`."
 	toUnknown = "runs a program that only the run decides, which the guard can't check: name " +
 		"the program in the script itself."
+	// unreadable denies the script echo 'open, which the guard can't read, in every pane.
+	unreadable = guardStopped + "The guard can't read the script (1:6: reached EOF without " +
+		"closing quote `'`): write it in plain bash."
 )
 
 // denied returns the reason that denies a role's script for the command, which the guard names so.
@@ -41,8 +47,8 @@ func TestGuardHookDeniesARoleWhatTheGuardWatches(t *testing.T) {
 		"claude -p 'Review it'":                          denied("claude", toAgent),
 		`"$GIT" push`:                                    denied("… push", toUnknown),
 		"baton answer demo-1 y":                          denied("baton answer", toBaton),
-		"baton feature start x":                          denied("baton feature", toBaton),
-		"baton hook stop":                                denied("baton hook", toBaton),
+		"baton feature start x":                          denied("baton feature start", toBaton),
+		"baton hook stop":                                denied("baton hook stop", toBaton),
 		"baton pane":                                     denied("baton pane", toBaton),
 		"baton":                                          denied("baton", toBaton),
 		`baton "$verb"`:                                  denied("baton …", toBaton),
@@ -56,8 +62,7 @@ func TestGuardHookDeniesARoleWhatTheGuardWatches(t *testing.T) {
 		"baton -help":                                    "",
 		"baton --help":                                   "",
 		"git status && baton wait && git push && tmux ls": denied("git push", toOutward),
-		"echo 'open": guardStopped + "The guard can't read the script (1:6: reached EOF without " +
-			"closing quote `'`): write it in plain bash.",
+		"echo 'open": unreadable,
 	}
 
 	dir := t.TempDir()
@@ -97,25 +102,6 @@ func TestGuardHookLetsARolesOtherToolsRun(t *testing.T) {
 	}
 }
 
-// TestGuardHookSaysNothingInTheOrchestratorsPane lets every tool of the orchestrator's pane run
-// on copilot's own terms, since the orchestrator's guard comes later (decision 52).
-func TestGuardHookSaysNothingInTheOrchestratorsPane(t *testing.T) {
-	mainDir, _ := repos(t)
-	store := started(t, mainDir, fresh())
-
-	cases := map[string]map[string]any{
-		"bash":   {"command": "git push && tmux ls"},
-		"create": {"path": store.Dir + "/brief.md", "file_text": "Build it.\n"},
-	}
-
-	for tool, args := range cases {
-		t.Run(tool, func(t *testing.T) {
-			input := guardInput(t, mainDir, tool, args)
-			wantGuard(t, guardHook(t, mainDir, orchestratorPane(), input), "")
-		})
-	}
-}
-
 // guardHook runs baton hook guard in the pane, from the folder, with the hook's input.
 func guardHook(t *testing.T, dir string, env map[string]string, input string) result {
 	t.Helper()
@@ -132,13 +118,13 @@ func guardEnv(dir string, env map[string]string, input string) cli.Env {
 	return hook
 }
 
-// guardInput returns the input that copilot gives its preToolUse hook when a pane's copilot calls
-// the tool with the arguments in the folder, if any.
+// guardInput returns the input that copilot gives its preToolUse hook when a pane's copilot, in
+// the session, calls the tool with the arguments in the folder, if any.
 func guardInput(t *testing.T, dir, tool string, args any) string {
 	t.Helper()
 
 	input := map[string]any{
-		"sessionId": "0b5d2c4e", "timestamp": 1767225600000, "toolName": tool, "toolArgs": args,
+		"sessionId": session, "timestamp": 1767225600000, "toolName": tool, "toolArgs": args,
 	}
 	if dir != "" {
 		input["cwd"] = dir
@@ -153,11 +139,21 @@ func guardInput(t *testing.T, dir, tool string, args any) string {
 }
 
 // wantGuard checks that baton hook guard let the tool run, without a word, if reason is "", and
-// otherwise denied it with the reason: a JSON object, on a line of its own.
+// otherwise denied it with the reason.
 func wantGuard(t *testing.T, got result, reason string) {
 	t.Helper()
+	wantAnswer(t, got, verdict{"deny", reason})
+}
 
-	if reason == "" {
+// verdict is baton hook guard's answer to a tool: deny or ask, with the reason, or none.
+type verdict struct{ decision, reason string }
+
+// wantAnswer checks that baton hook guard let the tool run, without a word, if the reason is "",
+// and otherwise gave its answer with the reason: a JSON object, on a line of its own.
+func wantAnswer(t *testing.T, got result, want verdict) {
+	t.Helper()
+
+	if want.reason == "" {
 		if got != (result{}) {
 			t.Errorf("got %+v; want exit code 0 and no output", got)
 		}
@@ -175,7 +171,8 @@ func wantGuard(t *testing.T, got result, reason string) {
 		t.Fatalf("got %+v; want exit code 0 and a JSON object", got)
 	}
 
-	if answer.Decision != "deny" || answer.Reason != reason {
-		t.Errorf("got %+v; want the decision deny, with the reason %q", answer, reason)
+	if answer.Decision != want.decision || answer.Reason != want.reason {
+		t.Errorf("got %+v; want the decision %s, with the reason %q", answer, want.decision,
+			want.reason)
 	}
 }

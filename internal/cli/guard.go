@@ -30,32 +30,49 @@ var why = map[guard.Kind]string{
 		"the program in the script itself.",
 }
 
+// helpCommands are baton's help, by the names that the guard gives them, which every pane runs.
+var helpCommands = []string{"baton help", "baton -h", "baton -help", "baton --help"}
+
 // roleCommands are baton's commands that a role runs, by the names that the guard gives them.
-var roleCommands = []string{
-	"baton ask", "baton handover", "baton status", "baton wait",
-	"baton help", "baton -h", "baton -help", "baton --help",
-}
+var roleCommands = slices.Concat(
+	[]string{"baton ask", "baton handover", "baton status", "baton wait"}, helpCommands)
 
-// guardInput is what baton reads of the preToolUse hook's input: the copilot's folder, and the
-// tool that the copilot calls, with its arguments (facts 4 and 36).
+// guardInput is what baton reads of the preToolUse hook's input: the copilot's session and
+// folder, and the tool that the copilot calls, with its arguments (facts 4 and 36).
 type guardInput struct {
-	Dir  string         `json:"cwd"`
-	Tool string         `json:"toolName"`
-	Args jsontext.Value `json:"toolArgs"`
+	Session string         `json:"sessionId"`
+	Dir     string         `json:"cwd"`
+	Tool    string         `json:"toolName"`
+	Args    jsontext.Value `json:"toolArgs"`
 }
 
-// guardOutput is the preToolUse hook's answer that denies the tool, with the reason.
+// guardOutput is the preToolUse hook's answer, deny or ask, with the reason. Its zero value says
+// nothing, which leaves the tool to copilot's own permissions.
 type guardOutput struct {
 	Decision string `json:"permissionDecision"`
 	Reason   string `json:"permissionDecisionReason"`
 }
 
+// deny returns the answer that denies the tool for the reason, or none for no reason.
+func deny(reason string) guardOutput {
+	if reason == "" {
+		return guardOutput{}
+	}
+
+	return guardOutput{"deny", reason}
+}
+
+// paneRules are the guard's rules in one kind of pane: its answer to the commands of a bash
+// script that the guard watches, and its reason to deny a file tool's write of the path, or "".
+type paneRules struct {
+	script func(commands []guard.Command) (guardOutput, error)
+	write  func(path string) (string, error)
+}
+
 // hookGuard is the plugin's preToolUse hook, which runs before each tool that a pane's copilot
-// calls. In a role's pane, it denies a bash script that the guard can't read, or that runs a
-// command that the guard watches other than baton's commands for a role, and a create or edit of
-// a file in baton's folder or in baton's cache folder, which holds the plugin. It says nothing in
-// the orchestrator's pane yet. Copilot denies the tool when the hook fails, so baton then reports
-// why and exits with 1 (decisions 52 and 53).
+// calls, and answers by the pane's rules: a role's (decisions 52 and 53) or the orchestrator's
+// (decision 54). Copilot denies the tool when the hook fails, so baton then reports why and exits
+// with 1.
 func hookGuard(ctx context.Context, env Env, args []string) error {
 	if err := parse(newFlags(env, "hook guard"), args); err != nil {
 		return err
@@ -67,22 +84,30 @@ func hookGuard(ctx context.Context, env Env, args []string) error {
 	}
 
 	role, _, err := fromPane(env.Getenv)
-	if err != nil || role == flow.RoleOrchestrator {
+	if err != nil {
 		return err
 	}
 
-	reason, err := guardReason(ctx, cmp.Or(input.Dir, env.Dir), input)
-	if err != nil || reason == "" {
+	dir := cmp.Or(input.Dir, env.Dir)
+
+	rules := roleRules(ctx, dir)
+	if role == flow.RoleOrchestrator {
+		rules = orchestratorRules(ctx, env, dir, input.Session)
+	}
+
+	answer, err := guardAnswer(dir, input, rules)
+	if err != nil || answer == (guardOutput{}) {
 		return err
 	}
 
-	return json.MarshalEncode(jsontext.NewEncoder(env.Stdout), guardOutput{"deny", reason})
+	return json.MarshalEncode(jsontext.NewEncoder(env.Stdout), answer)
 }
 
-// guardReason returns the reason to deny the tool in a role's pane, or "" to let it run: bash by
-// its script, and create and edit by the file that they write. The role's other tools read, or
-// look after its shells (fact 36). A relative path starts in the folder.
-func guardReason(ctx context.Context, dir string, input guardInput) (string, error) {
+// guardAnswer returns the guard's answer to the tool by the pane's rules: to bash by the commands
+// of its script that the guard watches, and to create and edit by the file that they write. The
+// pane's other tools read, or look after its shells (fact 36). It denies a script that it can't
+// read in every pane. A relative path starts in the folder.
+func guardAnswer(dir string, input guardInput, rules paneRules) (guardOutput, error) {
 	switch input.Tool {
 	case "bash":
 		var args struct {
@@ -90,47 +115,88 @@ func guardReason(ctx context.Context, dir string, input guardInput) (string, err
 		}
 
 		if err := json.Unmarshal(input.Args, &args); err != nil {
-			return "", fmt.Errorf("read the arguments of bash: %w", err)
+			return guardOutput{}, fmt.Errorf("read the arguments of bash: %w", err)
 		}
 
-		return scriptReason(args.Command), nil
+		commands, err := guard.Commands(args.Command)
+		if err != nil {
+			return deny(fmt.Sprintf("%sThe guard can't read the script (%v): write it in "+
+				"plain bash.", stopped, err)), nil
+		}
+
+		return rules.script(commands)
 	case "create", "edit":
 		var args struct {
 			Path string `json:"path"`
 		}
 
 		if err := json.Unmarshal(input.Args, &args); err != nil {
-			return "", fmt.Errorf("read the arguments of %s: %w", input.Tool, err)
+			return guardOutput{}, fmt.Errorf("read the arguments of %s: %w", input.Tool, err)
 		}
 
-		return pathReason(ctx, dir, args.Path)
+		reason, err := rules.write(absolute(dir, args.Path))
+
+		return deny(reason), err
 	default:
-		return "", nil
+		return guardOutput{}, nil
 	}
 }
 
-// scriptReason returns the reason to deny a bash script in a role's pane, or "" to let it run: a
-// script that the guard can't read, or its first command that the guard watches other than
-// baton's commands for a role.
-func scriptReason(script string) string {
-	commands, err := guard.Commands(script)
-	if err != nil {
-		return fmt.Sprintf("%sThe guard can't read the script (%v): write it in plain bash.",
-			stopped, err)
-	}
+// firstAnswer returns the judge's answer to the first command that it denies, or else to the
+// first that it asks the user about, or none.
+func firstAnswer(commands []guard.Command, judge func(guard.Command) guardOutput) guardOutput {
+	var asked guardOutput
 
 	for _, command := range commands {
-		if !slices.Contains(roleCommands, command.Name) {
-			return fmt.Sprintf("%s`%s` %s", stopped, command.Name, why[command.Kind])
+		answer := judge(command)
+		if answer.Decision == "deny" {
+			return answer
 		}
+
+		asked = cmp.Or(asked, answer)
 	}
 
-	return ""
+	return asked
 }
 
-// pathReason returns the reason to deny a file tool's write in a role's pane, or "" to let it run:
-// a file in baton's folder, which only baton writes (decision 48), or in baton's cache folder,
-// whose plugin runs this guard (decision 53).
+// absolute returns the path, made absolute from the folder if it is relative. An empty folder is
+// the process's own working folder, as in main.
+func absolute(dir, path string) string {
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(dir, path)
+	}
+
+	if abs, err := filepath.Abs(path); err == nil {
+		path = abs
+	}
+
+	return path
+}
+
+// roleRules are the guard's rules in a role's pane, which nobody watches: it denies each command
+// that it watches but baton's commands for a role, and a write in baton's folder or its cache
+// folder (decisions 52 and 53).
+func roleRules(ctx context.Context, dir string) paneRules {
+	return paneRules{
+		script: func(commands []guard.Command) (guardOutput, error) {
+			return firstAnswer(commands, roleCommand), nil
+		},
+		write: func(path string) (string, error) { return pathReason(ctx, dir, path) },
+	}
+}
+
+// roleCommand returns the guard's answer to a command that it watches in a role's pane.
+func roleCommand(command guard.Command) guardOutput {
+	if slices.Contains(roleCommands, command.Name) {
+		return guardOutput{}
+	}
+
+	return deny(fmt.Sprintf("%s`%s` %s", stopped, command.Name, why[command.Kind]))
+}
+
+// pathReason returns the reason to deny a file tool's write of the absolute path in a role's pane,
+// or "" to let it run: a file in baton's folder, which only baton writes (decision 48), or in
+// baton's cache folder, whose plugin runs this guard (decision 53).
 func pathReason(ctx context.Context, dir, path string) (string, error) {
 	cache, err := batonCache()
 	if err != nil {
@@ -140,15 +206,6 @@ func pathReason(ctx context.Context, dir, path string) (string, error) {
 	store, err := openStore(ctx, dir)
 	if err != nil {
 		return "", err
-	}
-
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(dir, path)
-	}
-
-	// An empty dir is the process's own working folder, as in main.
-	if abs, err := filepath.Abs(path); err == nil {
-		path = abs
 	}
 
 	switch {

@@ -194,14 +194,14 @@ func command(role flow.Role, dir string, own config.Role, work string) []string 
 }
 
 // orchestrating returns the orchestrator's copilot command line: its agent in the plugin, its
-// settings, and the tools, with ask_user and its extra tools, the user's own, such as nudge's,
-// since the user talks to it. It keeps copilot's own prompts for the tools, and has no first
-// prompt, since the user speaks first (decisions 45 and 49).
+// settings, every permission, since baton's guard asks the user what needs asking, and the tools,
+// with ask_user and its extra tools, the user's own, such as nudge's, since the user talks to it.
+// It has no first prompt, since the user speaks first (decisions 45, 49 and 54).
 func orchestrating(dir string, own config.Role) []string {
 	return slices.Concat([]string{
 		"copilot", "--agent", plugin.Agent(flow.RoleOrchestrator), "--plugin-dir", dir,
-	}, settingFlags(own), []string{"--available-tools"}, tools, []string{"ask_user"},
-		own.ExtraTools)
+	}, settingFlags(own), []string{"--allow-all", "--available-tools"}, tools,
+		[]string{"ask_user"}, own.ExtraTools)
 }
 
 // settingFlags returns copilot's flags for the role's settings: its model, and its reasoning

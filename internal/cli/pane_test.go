@@ -129,9 +129,9 @@ func TestPaneBecomesTheOrchestratorsCopilot(t *testing.T) {
 		path: copilot,
 		args: []string{
 			"copilot", "--agent", "baton:orchestrator", "--plugin-dir", pluginIn(t, cache),
-			"--model", "claude-opus-5.5", "--available-tools", "bash", "read_bash", "stop_bash",
-			"list_bash", "view", "create", "edit", "grep", "glob", "web_fetch", "ask_user",
-			"nudge-ask", "nudge-report",
+			"--model", "claude-opus-5.5", "--allow-all", "--available-tools", "bash", "read_bash",
+			"stop_bash", "list_bash", "view", "create", "edit", "grep", "glob", "web_fetch",
+			"ask_user", "nudge-ask", "nudge-report",
 		},
 		env: append(withoutVars("BATON_BIN"), "BATON_BIN="+self),
 	})

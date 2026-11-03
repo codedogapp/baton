@@ -19,6 +19,7 @@ baton needs no config file. To change its settings, write `config.json` in `~/Li
 - `roles`: a section per role, `orchestrator`, `lead`, `engineer`, `qa` or `reviewer`, with its `model` (by default `claude-opus-5.5`), its `reasoningEffort` (`none`, `minimal`, `low`, `medium`, `high`, `xhigh` or `max`; by default copilot's own), its `maxAiCredits` (30 or more; by default no cap) and, for the orchestrator alone, its `extraTools`: your own tools that it may use, by default nudge's `nudge-ask` and `nudge-report`.
 - `roundCap`: the engineer's passes per brief before the orchestrator asks you (by default 3).
 - `branchPrefix`: what goes before a feature's slug in its branch's name (by default `feature/`).
+- `planApproval`: whether baton asks you before each feature starts, so that you can check the orchestrator's plan first (by default `true`).
 
 For example, QA on another model with a cap, for every repo, and two rounds with another branch prefix for one repo:
 

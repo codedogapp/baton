@@ -160,6 +160,11 @@ func TestCommandsNamesBatonsCommand(t *testing.T) {
 		"/opt/homebrew/bin/baton status": {"baton: baton status"},
 		`baton "$verb" x`:                {"baton: baton …"},
 		"baton --help":                   {"baton: baton --help"},
+		"baton feature start demo-1":     {"baton: baton feature start"},
+		"baton hook guard":               {"baton: baton hook guard"},
+		"baton feature":                  {"baton: baton feature"},
+		`baton feature "$verb"`:          {"baton: baton feature …"},
+		"baton help feature":             {"baton: baton help"},
 	})
 }
 
