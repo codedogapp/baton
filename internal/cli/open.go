@@ -51,11 +51,17 @@ func open(ctx context.Context, env Env, args []string) error {
 }
 
 // makeOrchestrator makes the orchestrator's session in the main worktree, with one pane, which runs
-// this baton's pane command as the orchestrator (decisions 42 and 44).
+// this baton's pane command as the orchestrator (decisions 42 and 44). It reads the config file
+// first, as the pane does, since a pane that fails takes its session with it, and the reason too:
+// a mistake in the file shows here instead (decision 49).
 func makeOrchestrator(ctx context.Context, env Env, name, mainDir string) error {
 	self, err := env.Executable()
 	if err != nil {
 		return fmt.Errorf("find baton's own program: %w", err)
+	}
+
+	if _, err := loadSettings(ctx, mainDir); err != nil {
+		return err
 	}
 
 	err = env.Tmux.NewSession(ctx, tmux.Session{Name: name, Dir: mainDir, Panes: []tmux.Pane{{

@@ -33,7 +33,9 @@ type opening struct {
 // TestStartOpensTheOrchestrator opens the orchestrator from the repo's worktrees, outside tmux and
 // inside it, with the orchestrator's session running and without it. baton start makes the
 // session in the main worktree if it isn't running, then shows it: outside tmux, tmux takes
-// baton's place and attaches the terminal to it, and inside, the user's client switches to it.
+// baton's place and attaches the terminal to it, and inside, the user's client switches to it. It
+// reads the config file only to make the session, so a mistake there keeps no one from a session
+// that runs.
 func TestStartOpensTheOrchestrator(t *testing.T) {
 	program := onPath(t, "tmux")
 	mainDir, linked := repos(t)
@@ -71,14 +73,24 @@ func TestStartOpensTheOrchestrator(t *testing.T) {
 			name: "inside tmux, with its session running", dir: mainDir, vars: inTmux,
 			server: running, shown: []string{"baton-main"},
 		},
+		{
+			name: "with its session running, and a mistake in the config file", dir: mainDir,
+			server: running, line: attached,
+			setup: func(t *testing.T) {
+				t.Setenv("HOME", t.TempDir())
+				writeConfig(t, `{"roundCap": -1}`)
+			},
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) { wantOpening(t, test) })
 	}
 }
 
 // TestStartRefuses opens the orchestrator where baton can't, and checks that baton start stops at
-// the first part that fails.
+// the first part that fails. It has a home folder of its own, for the config file.
 func TestStartRefuses(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
 	program := onPath(t, "tmux")
 	mainDir, linked := repos(t)
 
@@ -119,6 +131,11 @@ func TestStartRefuses(t *testing.T) {
 		{
 			name: "without its own program", dir: linked, self: errors.New("no such file"),
 			want: refused("find baton's own program: no such file"),
+		},
+		{
+			name: "with a mistake in the config file", dir: linked,
+			setup: func(t *testing.T) { writeConfig(t, `{"roundCap": -1}`) },
+			want:  refused("config file " + configPath(t) + ": roundCap -1: want 1 or more"),
 		},
 		{
 			name: "when tmux can't make the session", dir: linked,

@@ -1,5 +1,5 @@
-// Package repo runs git for baton: it finds the repo that baton works in, and makes a feature's
-// branch and worktree.
+// Package repo runs git for baton: it finds the repo that baton works in, and the repo's origin
+// remote, and makes a feature's branch and worktree.
 package repo
 
 import (
@@ -42,6 +42,24 @@ func MainWorktree(ctx context.Context, dir string) (string, error) {
 	return path, nil
 }
 
+// noRemote is git remote's exit status for a remote that isn't there (fact 32).
+const noRemote = 2
+
+// Remote returns the URL of the origin remote of the repo that holds the folder, as git gives it,
+// with the user's insteadOf rules applied, or "" if the repo has no origin remote (decision 49).
+func Remote(ctx context.Context, dir string) (string, error) {
+	out, err := git(ctx, dir, "remote", "get-url", "origin")
+	if exit, ok := errors.AsType[*exec.ExitError](err); ok && exit.ExitCode() == noRemote {
+		return "", nil
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("find the origin remote: %w", err)
+	}
+
+	return strings.TrimSuffix(out, "\n"), nil
+}
+
 // git runs git in the folder and returns what it printed.
 func git(ctx context.Context, dir string, args ...string) (string, error) {
 	// Sonar's go:S4036 wants git at a fixed path, but baton runs the user's own git, found on the
@@ -63,15 +81,25 @@ func git(ctx context.Context, dir string, args ...string) (string, error) {
 	return string(out), nil
 }
 
-// failure says why running git failed.
+// failure says why running git failed: with git's reason, if git gave one, which keeps git's exit
+// status.
 func failure(ctx context.Context, err error) error {
 	if cause := context.Cause(ctx); cause != nil {
 		return cause
 	}
 
 	if exit, ok := errors.AsType[*exec.ExitError](err); ok && len(exit.Stderr) > 0 {
-		return errors.New(string(bytes.TrimSpace(exit.Stderr)))
+		return reason{exit}
 	}
 
 	return err
 }
+
+// reason is a git that failed, and said why.
+type reason struct{ exit *exec.ExitError }
+
+// Error returns what git printed on stderr, trimmed.
+func (r reason) Error() string { return string(bytes.TrimSpace(r.exit.Stderr)) }
+
+// Unwrap returns git's exit status.
+func (r reason) Unwrap() error { return r.exit }

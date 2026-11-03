@@ -9,17 +9,16 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
+	"github.com/codedogapp/baton/internal/config"
 	"github.com/codedogapp/baton/internal/flow"
 	"github.com/codedogapp/baton/internal/plugin"
 )
 
 // cacheFolder is baton's folder in the user's cache folder, which holds the plugin (decision 36).
 const cacheFolder = "baton"
-
-// model is every role's model until the config file names one (decision 7).
-const model = "claude-opus-5.5"
 
 // allowAll is copilot's variable that allows every tool and, set to "true" exactly, also trusts
 // the folder that copilot starts in, the feature's worktree, for that session (decision 39).
@@ -29,11 +28,11 @@ const allowAll = "COPILOT_ALLOW_ALL"
 // plugin's agentStop hook, which runs baton hook stop (decision 47).
 const envBin = "BATON_BIN"
 
-// pane becomes the pane's copilot. The orchestrator's copilot starts at once, since the user talks
-// to it. A role's pane waits for the role's first work, then becomes the role's copilot, with that
-// work as its first prompt (decision 38). It finds copilot and writes the plugin before it waits,
-// so that a pane that can't start copilot never picks up work that nobody would then do. Its wait
-// marks the role as waiting, as baton wait does, until copilot replaces it (decision 47).
+// pane becomes the pane's copilot, with the role's settings from the config file (decision 49).
+// The orchestrator's copilot starts at once, since the user talks to it. A role's pane waits for
+// the role's first work, then becomes the role's copilot, with that work as its first prompt
+// (decision 38). It finds copilot, writes the plugin and reads the settings before it waits, so
+// that a pane that can't start copilot never picks up work that nobody would then do.
 func pane(ctx context.Context, env Env, args []string) error {
 	if err := parse(newFlags(env, "pane"), args); err != nil {
 		return err
@@ -54,18 +53,37 @@ func pane(ctx context.Context, env Env, args []string) error {
 		return err
 	}
 
-	bin := envBin + "=" + self
-	if role == flow.RoleOrchestrator {
-		return becomeCopilot(env, program, orchestrating(dir), environment(bin))
-	}
-
-	store, err := openStore(ctx, env.Dir)
+	settings, err := loadSettings(ctx, env.Dir)
 	if err != nil {
 		return err
 	}
 
-	if _, err := fmt.Fprintf(env.Stdout, "%s in %s: waiting for work.\n", role, slug); err != nil {
+	own, bin := settings.Roles[role], envBin+"="+self
+	if role == flow.RoleOrchestrator {
+		return becomeCopilot(env, program, orchestrating(dir, own), environment(bin))
+	}
+
+	work, err := waitForWork(ctx, env, role, slug)
+	if err != nil {
 		return err
+	}
+
+	return becomeCopilot(env, program, command(role, dir, own, work),
+		environment(bin, allowAll+"=true"))
+}
+
+// waitForWork says that the role waits, waits for the role's work in the feature, then picks it
+// up and returns it, as the role's first prompt. While it waits, it marks the role as waiting, as
+// baton wait does (decision 47), and drops what the user types in the pane; it stops waiting when
+// the pane's terminal ends.
+func waitForWork(ctx context.Context, env Env, role flow.Role, slug string) (string, error) {
+	store, err := openStore(ctx, env.Dir)
+	if err != nil {
+		return "", err
+	}
+
+	if _, err := fmt.Fprintf(env.Stdout, "%s in %s: waiting for work.\n", role, slug); err != nil {
+		return "", err
 	}
 
 	waiting, stop := context.WithCancelCause(ctx)
@@ -75,12 +93,10 @@ func pane(ctx context.Context, env Env, args []string) error {
 
 	feature, err := pickUp(waiting, store, role, slug)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	work := pickupText(store, feature, role)
-
-	return becomeCopilot(env, program, command(role, dir, work), environment(bin, allowAll+"=true"))
+	return pickupText(store, feature, role), nil
 }
 
 // becomeCopilot replaces baton with copilot, with the command line and the environment.
@@ -147,23 +163,40 @@ var tools = []string{
 	"web_fetch",
 }
 
-// command returns the role's copilot command line: the role's agent in the plugin, the model,
-// every permission and no questions, the tools, and the role's work as the first prompt
-// (decisions 9 to 11).
-func command(role flow.Role, dir, work string) []string {
-	return slices.Concat([]string{
-		"copilot", "--agent", plugin.Agent(role), "--plugin-dir", dir, "--model", model,
-		"--allow-all", "--no-ask-user", "--available-tools",
-	}, tools, []string{"-i", work})
+// command returns the role's copilot command line: the role's agent in the plugin, the role's
+// settings, every permission and no questions, the tools, and the role's work as the first prompt
+// (decisions 9 to 11 and 49).
+func command(role flow.Role, dir string, own config.Role, work string) []string {
+	return slices.Concat([]string{"copilot", "--agent", plugin.Agent(role), "--plugin-dir", dir},
+		settingFlags(own), []string{"--allow-all", "--no-ask-user", "--available-tools"}, tools,
+		[]string{"-i", work})
 }
 
-// orchestrating returns the orchestrator's copilot command line: its agent in the plugin, the
-// model, and the tools, with ask_user and the user's nudge tools, since the user talks to it. It
-// keeps copilot's own prompts for the tools, and has no first prompt, since the user speaks first
-// (decision 45).
-func orchestrating(dir string) []string {
+// orchestrating returns the orchestrator's copilot command line: its agent in the plugin, its
+// settings, and the tools, with ask_user and its extra tools, the user's own, such as nudge's,
+// since the user talks to it. It keeps copilot's own prompts for the tools, and has no first
+// prompt, since the user speaks first (decisions 45 and 49).
+func orchestrating(dir string, own config.Role) []string {
 	return slices.Concat([]string{
 		"copilot", "--agent", plugin.Agent(flow.RoleOrchestrator), "--plugin-dir", dir,
-		"--model", model, "--available-tools",
-	}, tools, []string{"ask_user", "nudge-ask", "nudge-report"})
+	}, settingFlags(own), []string{"--available-tools"}, tools, []string{"ask_user"},
+		own.ExtraTools)
+}
+
+// settingFlags returns copilot's flags for the role's settings: its model, and its reasoning
+// effort and its cap on AI credits, unless it leaves them to copilot (fact 31). The cap is in
+// digits, never in an exponent's form.
+func settingFlags(own config.Role) []string {
+	flags := []string{"--model", own.Model}
+
+	if own.ReasoningEffort != "" {
+		flags = append(flags, "--reasoning-effort", own.ReasoningEffort)
+	}
+
+	if own.MaxAICredits > 0 {
+		flags = append(flags, "--max-ai-credits",
+			strconv.FormatFloat(own.MaxAICredits, 'f', -1, 64))
+	}
+
+	return flags
 }

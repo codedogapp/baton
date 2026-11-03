@@ -13,8 +13,8 @@ import (
 	"github.com/codedogapp/baton/internal/state"
 )
 
-// TestPaneRefusesAndWritesNothing refuses panes that could never start their copilot, or that
-// have no feature to wait on, or no work to wait for.
+// TestPaneRefusesAndWritesNothing refuses panes that could never start their copilot, or not
+// with the user's settings, or that have no feature to wait on, or no work to wait for.
 func TestPaneRefusesAndWritesNothing(t *testing.T) {
 	_, cache := standIn(t)
 	mainDir, linked := repos(t)
@@ -89,7 +89,22 @@ func TestPaneRefusesAndWritesNothing(t *testing.T) {
 		},
 		{
 			name: "outside a git repo", dir: outside, env: paneOf(flow.RoleLead),
-			want: "find the git repo: fatal: not a git repository",
+			want: "find the origin remote: fatal: not a git repository",
+		},
+		{
+			name: "the orchestrator's, outside a git repo", dir: outside, env: orchestratorPane(),
+			want: "find the origin remote: fatal: not a git repository",
+		},
+		{
+			name: "with a mistake in the config file", dir: linked, env: paneOf(flow.RoleLead),
+			setup: func(t *testing.T) { writeConfig(t, `{"roundCap": -1}`) },
+			want:  "config file " + configPath(t) + ": roundCap -1: want 1 or more\n",
+		},
+		{
+			name: "the orchestrator's, with a mistake in the config file", dir: mainDir,
+			env:   orchestratorPane(),
+			setup: func(t *testing.T) { writeConfig(t, `{"roundCap": -1}`) },
+			want:  "config file " + configPath(t) + ": roundCap -1: want 1 or more\n",
 		},
 		{
 			name: "of another feature", dir: linked,

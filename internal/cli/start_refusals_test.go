@@ -10,8 +10,11 @@ import (
 )
 
 // TestStartFeatureRefuses tries to start feature demo-2 where demo-1 has started, and checks that
-// a refusal changes nothing: baton's folder, the repo's worktrees and branches, and tmux.
+// a refusal changes nothing: baton's folder, the repo's worktrees and branches, and tmux. It has a
+// home folder of its own, for the config file.
 func TestStartFeatureRefuses(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
 	mainDir, linked := repos(t)
 	store := started(t, mainDir, fresh())
 	brief := write(t, linked, "brief.md", "Build the demo.\n")
@@ -22,12 +25,13 @@ func TestStartFeatureRefuses(t *testing.T) {
 	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(outside))
 
 	cases := []struct {
-		name string
-		dir  string   // The working folder, if not the linked worktree.
-		args []string // After baton feature start.
-		role string   // BATON_ROLE, if any.
-		self error    // Why baton can't find its own program, if it can't.
-		want string   // The start of the reason, after "baton feature start: ".
+		name  string
+		dir   string             // The working folder, if not the linked worktree.
+		args  []string           // After baton feature start.
+		role  string             // BATON_ROLE, if any.
+		setup func(t *testing.T) // What the test changes first, if anything.
+		self  error              // Why baton can't find its own program, if it can't.
+		want  string             // The start of the reason, after "baton feature start: ".
 	}{
 		{
 			name: "without a slug", args: []string{"--brief", "brief.md"},
@@ -69,6 +73,17 @@ func TestStartFeatureRefuses(t *testing.T) {
 			want: "find the git repo: fatal: not a git repository",
 		},
 		{
+			name: "without a config folder", args: []string{"demo-2", "--brief", "brief.md"},
+			setup: func(t *testing.T) { t.Setenv("HOME", "") },
+			want:  "find the config folder: ",
+		},
+		{
+			name:  "with a mistake in the config file",
+			args:  []string{"demo-2", "--brief", "brief.md"},
+			setup: func(t *testing.T) { writeConfig(t, `{"roundCap": -1}`) },
+			want:  "config file " + configPath(t) + ": roundCap -1: want 1 or more\n",
+		},
+		{
 			name: "with a bad slug", args: []string{"Demo-2", "--brief", "brief.md"},
 			want: "slug \"Demo-2\": want words of lowercase letters and digits joined by " +
 				"hyphens, such as demo-1\n",
@@ -83,14 +98,15 @@ func TestStartFeatureRefuses(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			fake := &fakeTmux{}
-			env := startIn(cmp.Or(test.dir, linked), fake, test.args...)
-			env.Getenv = func(name string) string {
-				return map[string]string{"BATON_ROLE": test.role}[name]
+			if test.setup != nil {
+				test.setup(t)
 			}
 
-			if test.self != nil {
-				env.Executable = func() (string, error) { return "", test.self }
+			fake := &fakeTmux{}
+			env := startIn(cmp.Or(test.dir, linked), fake, test.args...)
+			env.Executable = func() (string, error) { return self, test.self }
+			env.Getenv = func(name string) string {
+				return map[string]string{"BATON_ROLE": test.role}[name]
 			}
 
 			got := runEnv(t.Context(), env)
