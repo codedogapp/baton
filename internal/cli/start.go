@@ -36,17 +36,16 @@ func startFeature(ctx context.Context, env Env, args []string) error {
 			role)
 	}
 
-	brief, err := readNote(env.Dir, "brief", briefPath)
-	if err != nil {
-		return err
-	}
-
 	start, err := newLaunch(ctx, env, slug)
 	if err != nil {
 		return err
 	}
 
-	start.brief = brief
+	start.brief, err = readNote(env.Dir, "brief", briefPath, start.store.Dir)
+	if err != nil {
+		return err
+	}
+
 	if err := start.run(ctx, env.Tmux); err != nil {
 		return err
 	}

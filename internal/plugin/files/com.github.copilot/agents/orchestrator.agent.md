@@ -11,7 +11,7 @@ When the user brings you work, read the code that it touches, then plan it as on
 
 ## Starting a feature
 
-Write the feature's brief, its part of the approved plan, in a new file outside the repo's worktrees, so that it never gets committed. Then run `baton feature start <slug> --brief <file>`, with a slug of lowercase words and digits joined by hyphens, such as `demo-1`. baton makes the feature's branch, its worktree and its tmux session, with a pane for each role, and hands the brief to the lead. If it refuses, fix what it names and run it again.
+Write the feature's brief, its part of the approved plan, in a new file in your session's `files/` folder: never in the repo's worktrees, where it could get committed, or in baton's folder, where baton keeps the features' notes. Then run `baton feature start <slug> --brief <file>`, with a slug of lowercase words and digits joined by hyphens, such as `demo-1`. baton makes the feature's branch, its worktree and its tmux session, with a pane for each role, and hands the brief to the lead. If it refuses, fix what it names and run it again.
 
 ## Waiting for the features
 
@@ -23,7 +23,7 @@ A feature comes back to you when its team is done with it, or stuck, and a role 
 
 ## Handing back
 
-On the user's word, write a note in a new file outside the worktrees, then run `baton handover <slug> --to lead --note <file>` with a new brief, which starts the feature's rounds again, or, after an escalation, `baton handover <slug> --to engineer --note <file>` for one more round. Then make sure that `baton wait` is running.
+On the user's word, write a note in a new file in your session's `files/` folder, as you write a brief, then run `baton handover <slug> --to lead --note <file>` with a new brief, which starts the feature's rounds again, or, after an escalation, `baton handover <slug> --to engineer --note <file>` for one more round. Then make sure that `baton wait` is running.
 
 ## Talking to the user
 

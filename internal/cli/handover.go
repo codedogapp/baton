@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/codedogapp/baton/internal/flow"
 	"github.com/codedogapp/baton/internal/state"
@@ -35,12 +36,12 @@ func handover(ctx context.Context, env Env, args []string) error {
 		return err
 	}
 
-	note, err := readNote(env.Dir, "note", *notePath)
+	store, err := openStore(ctx, env.Dir)
 	if err != nil {
 		return err
 	}
 
-	store, err := openStore(ctx, env.Dir)
+	note, err := readNote(env.Dir, "note", *notePath, store.Dir)
 	if err != nil {
 		return err
 	}
@@ -83,14 +84,27 @@ func handedOver(role flow.Role, slug, named, next string) (string, error) {
 }
 
 // readNote reads the note in the file, whose path is relative to the working folder. The note is
-// the next role's work, so it can't be blank. The name is the note's flag: note, or brief.
-func readNote(dir, name, path string) ([]byte, error) {
+// the next role's work, so it can't be blank, and baton keeps its own copy, so the file can't lie
+// in baton's folder, which only baton writes (decision 48). The name is the note's flag: note, or
+// brief.
+func readNote(dir, name, path, batonDir string) ([]byte, error) {
 	if path == "" {
 		return nil, fmt.Errorf("want --%s <file>: the %s for the next role", name, name)
 	}
 
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(dir, path)
+	}
+
+	// An empty dir is the process's own working folder, as in main, and the path stays relative:
+	// both the check and the read take the absolute path, so that they look at the same file.
+	if abs, err := filepath.Abs(path); err == nil {
+		path = abs
+	}
+
+	if inside(path, batonDir) {
+		return nil, fmt.Errorf("%s %s is in baton's folder %s, which only baton writes: "+
+			"move it out, to your session's files/ folder", name, path, batonDir)
 	}
 
 	note, err := os.ReadFile(filepath.Clean(path))
@@ -103,6 +117,18 @@ func readNote(dir, name, path string) ([]byte, error) {
 	}
 
 	return note, nil
+}
+
+// inside reports whether the file lies in the folder, once the symlinks of both are resolved. A
+// path that doesn't resolve, such as a missing file's or a folder's that isn't there yet, holds
+// nothing: reading the file then says what's wrong with it.
+func inside(file, folder string) bool {
+	file, err := filepath.EvalSymlinks(file)
+	if err == nil {
+		folder, err = filepath.EvalSymlinks(folder)
+	}
+
+	return err == nil && strings.HasPrefix(file, folder+string(filepath.Separator))
 }
 
 // moved returns the change that makes the move in the feature's flow. It refuses while the

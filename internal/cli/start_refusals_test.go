@@ -16,6 +16,7 @@ func TestStartFeatureRefuses(t *testing.T) {
 	store := started(t, mainDir, fresh())
 	brief := write(t, linked, "brief.md", "Build the demo.\n")
 	blank := write(t, linked, "blank.md", " \n\t\n")
+	inBaton := write(t, store.Dir, "brief.md", "Build the demo.\n")
 
 	outside := t.TempDir()
 	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(outside))
@@ -49,6 +50,10 @@ func TestStartFeatureRefuses(t *testing.T) {
 			name: "with a missing brief", args: []string{"demo-2", "--brief", "missing.md"},
 			want: "read the brief: open " + filepath.Join(linked, "missing.md") +
 				": no such file or directory\n",
+		},
+		{
+			name: "with a brief in baton's folder", args: []string{"demo-2", "--brief", inBaton},
+			want: inBatonsFolder("brief", inBaton, store.Dir),
 		},
 		{
 			name: "in a role's pane", args: []string{"demo-2", "--brief", "brief.md"}, role: "lead",
