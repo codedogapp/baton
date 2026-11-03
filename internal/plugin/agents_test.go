@@ -65,7 +65,8 @@ func TestTheAgentsAreTheRoles(t *testing.T) {
 }
 
 // TestEachAgent checks each role's agent: that its ID names it, since the ID is the plugin's
-// name and the agent file's (fact 24), and that its prompt says how to move the work and wait.
+// name and the agent file's (fact 24), and that its prompt says how to move the work, where to
+// write its notes and how to wait.
 func TestEachAgent(t *testing.T) {
 	tree := written(t)
 
@@ -133,11 +134,12 @@ func readAgent(t *testing.T, tree fs.FS, path string) (map[string]string, string
 	return fields, prompt
 }
 
-// commands returns what the role's prompt must say for the role to move the work, to wait, and to
-// ask or answer: the orchestrator starts features, answers questions and hands features back, and
-// the others hand over and ask.
+// commands returns what the role's prompt must say for the role to move the work, to write its
+// notes in its session's files/ folder (decision 48), to wait, and to ask or answer: the
+// orchestrator starts features, answers questions and hands features back, and the others hand
+// over and ask.
 func commands(role flow.Role) []string {
-	said := []string{"start `baton wait`", "in async mode"}
+	said := []string{"start `baton wait`", "in async mode", "in your session's `files/` folder"}
 	if role == flow.RoleOrchestrator {
 		return append(said, "baton feature start <slug> --brief", "baton handover <slug> --to",
 			"`baton answer <slug> \"<answer>\"`")
