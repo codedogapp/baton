@@ -128,10 +128,20 @@ func TestJiraPrintsTheTicket(t *testing.T) {
 	}
 }
 
+// refusedLogin is the error of baton jira when Jira refuses the login as the email, which the
+// command in it has quoted for the shell.
+func refusedLogin(email, quoted string) string {
+	return "the Jira login as " + email + " failed (read DEMO-1: 401 Unauthorized: " +
+		"Unauthorized): check that email, and if the token has expired or lacks the scope " +
+		"read:jira-work, make a new one and replace it with `security add-generic-password -U " +
+		"-s baton-jira -a " + quoted + " -w`, which asks for it"
+}
+
 // TestJiraRefuses refuses a command line that names no key, or more than one, or a text that isn't
 // a key, before it reads the keychain; a repo without a Jira site and the user's email there, and
-// a user without a token in the keychain; it reports the keychain's failure, and Jira's. A case
-// without a config or a keychain has the tests' own.
+// a user without a token in the keychain; it reports the keychain's failure, and Jira's, with the
+// command that replaces a token for a login that Jira refuses. A case without a config or a
+// keychain has the tests' own.
 func TestJiraRefuses(t *testing.T) {
 	noSite := `no Jira site for this repo: set "jira" in {file} to the site's host name and ` +
 		`your email address at Atlassian, such as {"site": "example.atlassian.net", ` +
@@ -189,7 +199,15 @@ func TestJiraRefuses(t *testing.T) {
 		},
 		"with the wrong token": {
 			read: holding("jira-api-0000"), args: []string{"DEMO-1"},
-			want: "read DEMO-1: 401 Unauthorized: Unauthorized",
+			want: refusedLogin("me@example.com", "'me@example.com'"),
+		},
+		"with an email that Jira doesn't know": {
+			config: `{"jira": {"site": "example.atlassian.net", "email": "o'brien@example.com"}}`,
+			read: func(context.Context, string, string) (string, error) {
+				return stored, nil
+			},
+			args: []string{"DEMO-1"},
+			want: refusedLogin("o'brien@example.com", `'o'\''brien@example.com'`),
 		},
 		"with a ticket that Jira doesn't show": {
 			args: []string{"DEMO-9"},

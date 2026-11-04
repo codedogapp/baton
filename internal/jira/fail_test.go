@@ -1,10 +1,12 @@
 package jira_test
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -64,6 +66,42 @@ func TestTicketFails(t *testing.T) {
 			_, err := client.Ticket(t.Context(), test.key)
 			if err == nil || err.Error() != test.want {
 				t.Errorf("Ticket() = %v, want %s", err, test.want)
+			}
+		})
+	}
+}
+
+// TestTicketTellsARefusedLogin checks that a 401 to the user's email and token is a LoginError,
+// which a caller can tell apart, and that the site's 401, to a request without them, isn't.
+func TestTicketTellsARefusedLogin(t *testing.T) {
+	refuse := func(status int) http.HandlerFunc {
+		return func(w http.ResponseWriter, _ *http.Request) {
+			answer(t, w, status, `{"code":`+strconv.Itoa(status)+`,"message":"Refused"}`)
+		}
+	}
+
+	unauthorized := refuse(http.StatusUnauthorized)
+	cases := map[string]struct {
+		server *fake
+		token  string
+		login  bool
+	}{
+		"for a wrong token":      {server: &fake{}, token: "wrong", login: true},
+		"for the comments":       {server: &fake{comments: unauthorized}, login: true},
+		"for a ticket not there": {server: &fake{issue: refuse(http.StatusNotFound)}},
+		"for the site's 401":     {server: &fake{tenant: unauthorized}},
+		"for the gateway's 403":  {server: &fake{issue: refuse(http.StatusForbidden)}},
+	}
+
+	for name, test := range cases {
+		t.Run(name, func(t *testing.T) {
+			client := test.server.client(t)
+			client.Token = cmp.Or(test.token, scoped)
+
+			_, err := client.Ticket(t.Context(), "DEMO-1")
+			if _, refused := errors.AsType[jira.LoginError](err); err == nil ||
+				refused != test.login {
+				t.Errorf("Ticket() = %v, a LoginError: %t, want %t", err, refused, test.login)
 			}
 		})
 	}
