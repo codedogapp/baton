@@ -14,6 +14,10 @@ import (
 // approval is on (decision 54).
 const featureStart = "baton feature start"
 
+// batonDeliver is the guard's name for baton deliver, which the user approves each time
+// (decision 61).
+const batonDeliver = "baton deliver"
+
 // orchestratorCommands are baton's commands that the orchestrator runs unasked, by the names
 // that the guard gives them.
 var orchestratorCommands = slices.Concat([]string{
@@ -28,8 +32,8 @@ var orchestratorWhy = map[guard.Kind]string{
 	guard.Agent: "starts another agent, which the orchestrator never does: start a feature, " +
 		"and its team does the work.",
 	guard.Baton: "isn't the orchestrator's command: it runs `baton jira`, " +
-		"`baton feature start`, `baton wait`, `baton answer`, `baton handover` and " +
-		"`baton status`.",
+		"`baton feature start`, `baton wait`, `baton answer`, `baton handover`, " +
+		"`baton status` and `baton deliver`.",
 	guard.Unknown: why[guard.Unknown],
 }
 
@@ -39,9 +43,9 @@ const guardAsks = "baton's guard asks you: "
 
 // orchestratorRules are the guard's rules in the orchestrator's pane, which the user watches
 // (decision 54). It runs baton's commands for the orchestrator, asks the user before each command
-// that acts outside the Mac and, while plan approval is on, before each baton feature start, and
-// denies the other commands that it watches. It denies a write outside the copilot's session
-// folder, which the input's session names.
+// that acts outside the Mac, before each baton deliver and, while plan approval is on, before each
+// baton feature start, and denies the other commands that it watches. It denies a write outside
+// the copilot's session folder, which the input's session names.
 func orchestratorRules(ctx context.Context, env Env, dir, session string) paneRules {
 	return paneRules{
 		script: func(commands []guard.Command) (guardOutput, error) {
@@ -93,6 +97,10 @@ func orchestratorCommand(command guard.Command, approval bool) guardOutput {
 			"turns this question off."}
 	case command.Name == featureStart:
 		return guardOutput{}
+	case command.Name == batonDeliver:
+		return guardOutput{"ask", guardAsks + "`baton deliver` pushes a feature's branch to " +
+			"origin, then opens its pull request on GitHub or comments on it. Allow it if you " +
+			"want the feature delivered."}
 	case command.Kind == guard.Outward:
 		return guardOutput{"ask", fmt.Sprintf("%s`%s` can act outside the Mac. Allow it only "+
 			"if you want it to.", guardAsks, command.Name)}

@@ -10,12 +10,13 @@ const (
 	StatusRunning   Status = "running"   // A role other than the orchestrator holds the feature.
 	StatusEscalated Status = "escalated" // A rejection came after the last round; the user decides.
 	StatusReady     Status = "ready"     // The lead's final report is in; the user decides.
+	StatusDelivered Status = "delivered" // baton deliver pushed it, and the user decides again.
 )
 
 // known reports whether the status is one of the statuses above.
 func (s Status) known() bool {
 	switch s {
-	case StatusRunning, StatusEscalated, StatusReady:
+	case StatusRunning, StatusEscalated, StatusReady, StatusDelivered:
 		return true
 	default:
 		return false
@@ -44,6 +45,21 @@ func Start(roundCap int) (State, error) {
 	}
 
 	return state, nil
+}
+
+// Deliver returns the state of a ready feature that baton deliver has pushed, with the lead's
+// final report in its pull request, or an error if the feature isn't ready (decision 61). The
+// orchestrator still holds it: the user can hand it back to the lead, for changes that a later
+// delivery brings to the same pull request.
+func (s State) Deliver() (State, error) {
+	if s.Status != StatusReady {
+		return State{}, fmt.Errorf("a feature that is %s isn't ready to deliver: "+
+			"it is once the lead's final report comes", s.Status)
+	}
+
+	s.Status = StatusDelivered
+
+	return s, nil
 }
 
 // Gated reports whether the handover that makes the state waits for the repo's gate to pass: the

@@ -51,6 +51,7 @@ func TestGuardHookDeniesARoleWhatTheGuardWatches(t *testing.T) {
 		"baton hook stop":                                denied("baton hook stop", toBaton),
 		"baton pane":                                     denied("baton pane", toBaton),
 		"baton jira DEMO-1":                              denied("baton jira", toBaton),
+		"baton deliver demo-1":                           denied("baton deliver", toBaton),
 		"baton":                                          denied("baton", toBaton),
 		`baton "$verb"`:                                  denied("baton …", toBaton),
 		"baton wait":                                     "",
