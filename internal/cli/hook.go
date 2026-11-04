@@ -93,9 +93,10 @@ func readInput(env Env, input any) error {
 }
 
 // stopReason returns the reason that sends the role's copilot back to work, or "" to let it stop.
-// A role that waits may stop. So may the orchestrator when no work can come to it. A role that
-// doesn't wait gets the reason to wait if work can come to it, to ask again if its question waits
-// for its answer, and to finish its part and hand over otherwise.
+// A role that waits may stop. So may the orchestrator when no work can come to it, and a role whose
+// feature is closed, which leaves it nothing to do (decision 63). A role that doesn't wait gets the
+// reason to wait if work can come to it, to ask again if its question waits for its answer, and to
+// finish its part and hand over otherwise.
 func stopReason(store state.Store, role flow.Role, slug string) (string, error) {
 	waiting, err := store.Waiting(slug, role)
 	if err != nil || waiting {
@@ -114,7 +115,7 @@ func stopReason(store state.Store, role flow.Role, slug string) (string, error) 
 	feature, err := store.Read(slug)
 
 	switch {
-	case err != nil:
+	case err != nil || feature.Flow.Status == flow.StatusClosed:
 		return "", err
 	case workComes(role)(feature):
 		return noWait, nil

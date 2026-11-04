@@ -25,6 +25,14 @@ func (s Server) SwitchClient(ctx context.Context, name string) error {
 	return err
 }
 
+// KillSession ends the session with the exact name, and its panes' programs with it, whose
+// terminals tmux closes (decision 63).
+func (s Server) KillSession(ctx context.Context, name string) error {
+	_, err := s.run(ctx, "kill-session", "-t", "="+name)
+
+	return err
+}
+
 // AttachCommand returns tmux's command line that attaches the terminal to the session. The caller
 // runs it in its own place, as execve does, so that tmux keeps the terminal until the user
 // detaches.

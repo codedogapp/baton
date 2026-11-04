@@ -10,6 +10,7 @@ Commands:
   answer         answer the question of a feature's role, in the orchestrator's pane
   ask            ask the orchestrator a question, in a role's pane, then wait for the answer
   deliver        push a ready feature's branch and open its pull request on GitHub
+  feature close  close a feature: end its tmux session, keeping its branch and its worktree
   feature start  start a feature from a brief: its branch, its worktree and its tmux session
   handover       hand a feature over to the next role, with a note
   hook guard     copilot's tool hook: deny a role what the guard watches, before it runs
@@ -39,7 +40,7 @@ const handoverUsage = `Usage of baton handover:
 `
 
 func TestRunReportsTheUsage(t *testing.T) {
-	wantStart := "baton feature: want start\n\n" + usage
+	wantFeature := "baton feature: want close or start\n\n" + usage
 	wantHook := "baton hook: want guard or stop\n\n" + usage
 	cases := []struct {
 		name string
@@ -61,11 +62,11 @@ func TestRunReportsTheUsage(t *testing.T) {
 			[]string{"handover", "demo-1", "--next", "qa"},
 			result{code: 2, stderr: "flag provided but not defined: -next\n" + handoverUsage},
 		},
-		{"with feature alone", []string{"feature"}, result{code: 2, stderr: wantStart}},
+		{"with feature alone", []string{"feature"}, result{code: 2, stderr: wantFeature}},
 		{
 			"with feature's unknown command",
 			[]string{"feature", "end"},
-			result{code: 2, stderr: wantStart},
+			result{code: 2, stderr: wantFeature},
 		},
 		{"with feature start's -h", []string{"feature", "start", "-h"}, result{stderr: startUsage}},
 		{"with hook alone", []string{"hook"}, result{code: 2, stderr: wantHook}},

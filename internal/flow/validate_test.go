@@ -19,6 +19,7 @@ func TestValidateAcceptsExactlyTheStatesOfTheFlow(t *testing.T) {
 		flow.StatusEscalated,
 		flow.StatusReady,
 		flow.StatusDelivered,
+		flow.StatusClosed,
 	}
 
 	states := []flow.State{{}}
@@ -43,8 +44,8 @@ func roles() []flow.Role {
 	}
 }
 
-// madeStates returns the states that Start, Next and Deliver make, up to the caps and extra
-// rounds given, by trying every handover and the delivery from every state found.
+// madeStates returns the states that Start, Next, Deliver and Close make, up to the caps and
+// extra rounds given, by trying every handover, the delivery and the close from every state found.
 func madeStates(t *testing.T, maxCap, maxExtra int) map[flow.State]bool {
 	t.Helper()
 
@@ -80,19 +81,29 @@ func madeStates(t *testing.T, maxCap, maxExtra int) map[flow.State]bool {
 		}
 
 		made[state] = true
-
-		for _, handover := range handovers {
-			if next, err := state.Next(handover); err == nil {
-				found = append(found, next)
-			}
-		}
-
-		if delivered, err := state.Deliver(); err == nil {
-			found = append(found, delivered)
-		}
+		found = append(found, movedFrom(state, handovers)...)
 	}
 
 	return made
+}
+
+// movedFrom returns the states that the handovers, the delivery and the close make from the state.
+func movedFrom(state flow.State, handovers []flow.Handover) []flow.State {
+	var moved []flow.State
+
+	for _, handover := range handovers {
+		if next, err := state.Next(handover); err == nil {
+			moved = append(moved, next)
+		}
+	}
+
+	for _, move := range []func() (flow.State, error){state.Deliver, state.Close} {
+		if next, err := move(); err == nil {
+			moved = append(moved, next)
+		}
+	}
+
+	return moved
 }
 
 // vary returns n copies of each value, the i-th one changed by set(value, i).
@@ -127,6 +138,11 @@ func TestValidateRefusesStatesTheFlowNeverMakes(t *testing.T) {
 			"a role once the feature is ready",
 			state(flow.RoleLead, flow.StatusReady, 1, 0),
 			"lead can't hold a feature that is ready",
+		},
+		{
+			"a role once the feature is closed",
+			state(flow.RoleEngineer, flow.StatusClosed, 1, 0),
+			"engineer can't hold a feature that is closed",
 		},
 		{
 			"the engineer before the first round",

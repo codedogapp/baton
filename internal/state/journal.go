@@ -33,6 +33,7 @@ const (
 	// EventDeliver means that baton deliver pushed the feature's branch and opened its pull
 	// request, or commented the lead's final report on it.
 	EventDeliver = "deliver"
+	EventClose   = "close" // baton feature close closed the feature.
 )
 
 // Entry is what a change adds to the feature's journal: its event, and the note that came with

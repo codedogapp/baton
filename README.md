@@ -41,6 +41,10 @@ When a feature is ready, the orchestrator reports it to you, with a title for it
 
 gh picks the GitHub repo from the repo's remotes, as `gh pr create` does, so baton doesn't handle a fork with an `upstream` remote yet.
 
+## Closing a feature
+
+When you're done with a feature, delivered or not, tell the orchestrator to close it, which baton's guard asks you about first, or run `baton feature close <slug>` yourself. baton ends the feature's tmux session, with its team's panes, even mid-work, and keeps its branch and its worktree: add `--remove-worktree` to remove the worktree too, which git refuses while it holds changes that no commit has, and which takes the files that git ignores with it. The closed feature stays in `baton status`, and nothing moves it again. Delete its branch yourself once you no longer need it.
+
 ## Jira
 
 When you name a Jira Cloud ticket, the orchestrator reads it with `baton jira <KEY>`, such as `baton jira DEMO-1`, which prints the ticket and its comments as Markdown; you can run it too. baton only reads Jira, as you, with an API token that can only read:

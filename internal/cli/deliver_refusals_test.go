@@ -74,6 +74,15 @@ func TestDeliverRefusesAndChangesNothing(t *testing.T) {
 			want: "demo-1: a feature that is delivered isn't ready to deliver: it is once the " +
 				"lead's final report comes",
 		},
+		{
+			name: "once closed", args: []string{slug},
+			setup: func(t *testing.T) {
+				edit(t, ready.store, func(feature *state.Feature) {
+					feature.Flow.Status = flow.StatusClosed
+				})
+			},
+			want: "demo-1: the feature is closed, and nothing delivers it",
+		},
 	}
 
 	for _, test := range cases {

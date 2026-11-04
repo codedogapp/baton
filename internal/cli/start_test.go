@@ -17,14 +17,18 @@ import (
 // self is the path of baton's own program, in the tests.
 const self = "/opt/baton/bin/baton"
 
-// fakeTmux stands in for the user's tmux server: it keeps the sessions that baton makes and the
-// ones that it shows, and has the sessions in dirs running already.
+// fakeTmux stands in for the user's tmux server: it keeps the sessions that baton makes, the ones
+// that it shows and the ones that it ends, and has the sessions in dirs running, until baton ends
+// them.
 type fakeTmux struct {
 	sessions  []tmux.Session
 	making    func(ctx context.Context) error // What making a session does and returns, if set.
 	dirs      map[string]string               // The folders of the sessions that run already.
+	looking   func()                          // What looking for a session does first, if set.
 	shown     []string                        // The sessions that the user's client switched to.
 	switching error                           // What switching the user's client returns.
+	killed    []string                        // The sessions that baton ended, or tried to.
+	killing   error                           // What ending a session returns.
 }
 
 func (fake *fakeTmux) NewSession(ctx context.Context, session tmux.Session) error {
@@ -38,6 +42,10 @@ func (fake *fakeTmux) NewSession(ctx context.Context, session tmux.Session) erro
 }
 
 func (fake *fakeTmux) SessionDir(_ context.Context, name string) (string, bool) {
+	if fake.looking != nil {
+		fake.looking()
+	}
+
 	dir, found := fake.dirs[name]
 
 	return dir, found
@@ -51,6 +59,16 @@ func (fake *fakeTmux) SwitchClient(_ context.Context, name string) error {
 
 func (*fakeTmux) AttachCommand(name string) []string {
 	return []string{"tmux", "-L", "fake", "attach-session", "-t", "=" + name}
+}
+
+func (fake *fakeTmux) KillSession(_ context.Context, name string) error {
+	fake.killed = append(fake.killed, name)
+
+	if fake.killing == nil {
+		delete(fake.dirs, name)
+	}
+
+	return fake.killing
 }
 
 // startIn returns the environment of baton feature start with the arguments, in the folder,

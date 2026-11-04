@@ -6,6 +6,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/codedogapp/baton/internal/flow"
 )
 
 // Store keeps the features' state in a folder. In a repo, it's baton's folder in the git common
@@ -123,7 +125,8 @@ func (s Store) List() ([]Feature, error) {
 // read and its write, adds the entry to its journal, and returns the feature as changed. The
 // change gets the feature as its file holds it, once checked. Nothing is written when the change
 // fails, leaves an invalid feature, or moves it to another holder without a note, the holder's
-// work. The fields of the file that this baton doesn't know stay as they are.
+// work, unless it closes the feature, which leaves no one work (decision 63). The fields of the
+// file that this baton doesn't know stay as they are.
 func (s Store) Update(slug string, entry Entry, change func(*Feature) error) (Feature, error) {
 	if err := entry.Event.check(); err != nil {
 		return Feature{}, fmt.Errorf("change feature %s: %w", slug, err)
@@ -149,7 +152,8 @@ func (s Store) Update(slug string, entry Entry, change func(*Feature) error) (Fe
 		return Feature{}, fmt.Errorf("the change leaves feature %s invalid: %w", slug, err)
 	}
 
-	if rec.Flow.Holder != holder && len(entry.Note) == 0 {
+	moved := rec.Flow.Holder != holder && rec.Flow.Status != flow.StatusClosed
+	if moved && len(entry.Note) == 0 {
 		return Feature{}, fmt.Errorf(
 			"change feature %s: want a note, %s's work",
 			slug,

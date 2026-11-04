@@ -15,9 +15,12 @@ const (
 		"feature, and its team does the work."
 	orchestratorBaton = "isn't the orchestrator's command: it runs `baton jira`, " +
 		"`baton feature start`, `baton wait`, `baton answer`, `baton handover`, " +
-		"`baton status` and `baton deliver`."
+		"`baton status`, `baton deliver` and `baton feature close`."
 	toDeliver = guardAsks + "`baton deliver` pushes a feature's branch to origin, then opens " +
 		"its pull request on GitHub or comments on it. Allow it if you want the feature delivered."
+	toClose = guardAsks + "`baton feature close` ends a feature's team, even mid-work: its tmux " +
+		"session, with the roles' panes. It keeps the feature's branch, and its worktree unless " +
+		"--remove-worktree. Allow it if you want the feature closed."
 )
 
 // asks returns the guard's question to the user about the orchestrator's outward command, which
@@ -62,6 +65,9 @@ func TestGuardHookAsksTheUserAboutTheOrchestratorsCommands(t *testing.T) {
 		"baton deliver demo-1 --title 'Add it'":  {"ask", toDeliver},
 		"baton deliver demo-1 && git push":       {"ask", toDeliver},
 		"git push; baton deliver demo-1":         asks("git push"),
+		"baton feature close demo-1":             {"ask", toClose},
+		"baton feature close -remove-worktree x": {"ask", toClose},
+		"git push; baton feature close demo-1":   asks("git push"),
 		"baton deliver demo-1; tmux ls":          forbids("tmux", orchestratorControl),
 		"baton help feature":                     {},
 		"baton -h":                               {},

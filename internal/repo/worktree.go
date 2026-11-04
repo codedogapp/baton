@@ -63,6 +63,18 @@ func (wt Worktree) check() error {
 	return nil
 }
 
+// Remove removes the worktree, for a feature that the user closes, and keeps its branch (decision
+// 63). git refuses a worktree with changes that no commit has, untracked files included, and a
+// locked one, but takes the files that the repo ignores with it, and only prunes a worktree whose
+// folder is gone already (fact 46).
+func (wt Worktree) Remove(ctx context.Context, dir string) error {
+	if _, err := git(ctx, dir, "worktree", "remove", endOfOptions, wt.Path); err != nil {
+		return fmt.Errorf("remove the worktree %s: %w", wt.Path, err)
+	}
+
+	return nil
+}
+
 // Undo undoes Add, as Add does when it fails: it removes the worktree, with any changes in it,
 // unless git didn't get as far as its folder, and deletes the branch, even if no other branch has
 // merged it. It reports what it couldn't undo. A worktree that git was checking out when it
