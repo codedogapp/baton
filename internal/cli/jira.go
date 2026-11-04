@@ -49,6 +49,13 @@ func showTicket(ctx context.Context, env Env, args []string) error {
 	client := jira.Client{HTTP: env.HTTP, Site: site.Site, Email: site.Email, Token: token}
 
 	ticket, err := client.Ticket(ctx, keys[0])
+	if _, refused := errors.AsType[jira.LoginError](err); refused {
+		return fmt.Errorf("the Jira login as %s failed (%w): check that email, and if the token "+
+			"has expired or lacks the scope read:jira-work, make a new one and replace it with "+
+			"`security add-generic-password -U -s %s -a %s -w`, which asks for it", site.Email,
+			err, keychainService, quoted(site.Email))
+	}
+
 	if err != nil {
 		return err
 	}

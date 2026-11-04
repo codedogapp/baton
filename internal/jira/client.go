@@ -37,6 +37,10 @@ type Client struct {
 	Token string
 }
 
+// LoginError is the error for an answer of 401 Unauthorized to the user's email and token, which
+// Jira gives for a wrong email, or for a token that has expired or lacks its scope (fact 42).
+type LoginError struct{ error }
+
 // CheckKey returns an error for a text that isn't a ticket's key, in any case, so that a caller can
 // refuse it before it reads the token.
 func CheckKey(key string) error {
@@ -139,7 +143,11 @@ func (c Client) get(ctx context.Context, address string, login bool, target any)
 	defer func() { _ = resp.Body.Close() }()
 
 	answer := io.LimitReader(resp.Body, maxAnswer)
-	if resp.StatusCode != http.StatusOK {
+
+	switch {
+	case login && resp.StatusCode == http.StatusUnauthorized:
+		return LoginError{refusal(resp.Status, answer)}
+	case resp.StatusCode != http.StatusOK:
 		return refusal(resp.Status, answer)
 	}
 
