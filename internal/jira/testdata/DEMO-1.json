@@ -1,0 +1,87 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "10001",
+  "self": "https://api.atlassian.com/ex/jira/0f1e2d3c-4b5a-4987-8a6b-5c4d3e2f1a0b/rest/api/3/issue/10001",
+  "key": "DEMO-1",
+  "fields": {
+    "summary": "Let users sign in with a passkey",
+    "issuetype": {"id": "10004", "name": "Story", "subtask": false, "hierarchyLevel": 0},
+    "status": {
+      "id": "3",
+      "name": "In Progress",
+      "statusCategory": {"id": 4, "key": "indeterminate", "name": "In Progress"}
+    },
+    "parent": {
+      "id": "10010",
+      "key": "DEMO-10",
+      "fields": {
+        "summary": "Sign-in without passwords",
+        "status": {"id": "3", "name": "In Progress"},
+        "issuetype": {"id": "10000", "name": "Epic", "hierarchyLevel": 1}
+      }
+    },
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {"type": "text", "text": "Users sign in with a "},
+            {"type": "text", "text": "passkey", "marks": [{"type": "strong"}]},
+            {"type": "text", "text": " instead of a password."}
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {"type": "paragraph", "content": [{"type": "text", "text": "Offer a passkey after sign-in"}]}
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {"type": "paragraph", "content": [{"type": "text", "text": "Keep the password as a fallback"}]}
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "subtasks": [
+      {
+        "id": "10002",
+        "key": "DEMO-2",
+        "fields": {"summary": "Store the passkeys", "status": {"name": "To Do"}, "issuetype": {"name": "Subtask"}}
+      },
+      {
+        "id": "10003",
+        "key": "DEMO-3",
+        "fields": {"summary": "Show the passkey prompt", "status": {"name": "Done"}, "issuetype": {"name": "Subtask"}}
+      }
+    ],
+    "issuelinks": [
+      {
+        "id": "20001",
+        "type": {"id": "10000", "name": "Blocks", "inward": "is blocked by", "outward": "blocks"},
+        "outwardIssue": {
+          "id": "10004",
+          "key": "DEMO-4",
+          "fields": {"summary": "Retire the passwords", "status": {"name": "To Do"}}
+        }
+      },
+      {
+        "id": "20002",
+        "type": {"id": "10000", "name": "Blocks", "inward": "is blocked by", "outward": "blocks"},
+        "inwardIssue": {
+          "id": "10005",
+          "key": "DEMO-5",
+          "fields": {"summary": "Pick a passkey library", "status": {"name": "Done"}}
+        }
+      }
+    ]
+  }
+}

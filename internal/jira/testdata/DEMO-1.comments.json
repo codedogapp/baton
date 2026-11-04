@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "id": "30001",
+      "author": {"accountId": "000000:00000000-0000-0000-0000-000000000001", "displayName": "Ann Example", "active": true},
+      "body": {
+        "type": "doc",
+        "version": 1,
+        "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Which browsers do we support?"}]}]
+      },
+      "created": "2026-10-30T09:15:00.000+0100",
+      "updated": "2026-10-30T09:15:00.000+0100",
+      "jsdPublic": true
+    },
+    {
+      "id": "30002",
+      "body": {
+        "type": "doc",
+        "version": 1,
+        "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Safari, Chrome and Firefox."}]}]
+      },
+      "created": "2026-10-30T10:02:11.000+0100",
+      "updated": "2026-10-30T10:02:11.000+0100",
+      "jsdPublic": true
+    },
+    {
+      "id": "30003",
+      "author": {"accountId": "000000:00000000-0000-0000-0000-000000000002", "displayName": "Bo Example", "active": true},
+      "body": {"type": "doc", "version": 1, "content": []},
+      "created": "2026-10-31T08:00:00.000+0100",
+      "updated": "2026-10-31T08:00:00.000+0100",
+      "jsdPublic": true
+    }
+  ],
+  "maxResults": 100,
+  "startAt": 0,
+  "total": 3
+}
