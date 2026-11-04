@@ -1,0 +1,12 @@
+{
+  "id": "10006",
+  "key": "DEMO-6",
+  "fields": {
+    "summary": "Tidy the README",
+    "issuetype": {"name": "Task"},
+    "status": {"name": "To Do"},
+    "description": null,
+    "subtasks": [],
+    "issuelinks": []
+  }
+}
