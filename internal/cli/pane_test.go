@@ -107,7 +107,7 @@ func TestPaneWaitsForTheRolesWork(t *testing.T) {
 // the orchestrator's copilot at once, with no work to wait for and no first prompt, since the user
 // speaks first, and with copilot's own prompts: the user's environment as it is, with no belt, so
 // with the user's GitHub token and git's settings, but for BATON_BIN, which names this baton for
-// the stop hook (decisions 45, 47 and 55).
+// the stop hook, and the PATH, with this baton's folder first (decisions 45, 47, 55 and 62).
 func TestPaneBecomesTheOrchestratorsCopilot(t *testing.T) {
 	copilot, cache := standIn(t)
 	t.Setenv("COPILOT_ALLOW_ALL", "1")
@@ -133,7 +133,7 @@ func TestPaneBecomesTheOrchestratorsCopilot(t *testing.T) {
 			"stop_bash", "list_bash", "view", "create", "edit", "grep", "glob", "web_fetch",
 			"ask_user", "nudge-ask", "nudge-report",
 		},
-		env: append(withoutVars("BATON_BIN"), "BATON_BIN="+self),
+		env: orchestratorEnv(),
 	})
 }
 
@@ -217,11 +217,13 @@ func copilotEnv(rules ...[2]string) []string {
 }
 
 // roleEnv returns the environment that a role's copilot gets, with the variables: baton's, without
-// its GitHub tokens, with BATON_BIN naming this baton, for the stop hook,
-// COPILOT_ALLOW_ALL=true, which trusts copilot's folder, and the variables, each in place of the
-// user's own value, since copilot reads the first of two (fact 9, decisions 39, 47 and 55).
+// its GitHub tokens, with BATON_BIN naming this baton, for the stop hook, the PATH with this
+// baton's folder first, COPILOT_ALLOW_ALL=true, which trusts copilot's folder, and the variables,
+// each in place of the user's own value, since copilot reads the first of two (fact 9, decisions
+// 39, 47, 55 and 62).
 func roleEnv(vars ...string) []string {
-	vars = append([]string{"BATON_BIN=" + self, "COPILOT_ALLOW_ALL=true"}, vars...)
+	vars = append([]string{"BATON_BIN=" + self, "PATH=" + selfFirst(), "COPILOT_ALLOW_ALL=true"},
+		vars...)
 
 	return append(withoutVars(slices.Concat(names(vars), githubTokens)...), vars...)
 }
