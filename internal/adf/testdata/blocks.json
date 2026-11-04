@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "type": "doc",
+  "content": [
+    {"type": "paragraph", "content": [{"type": "text", "text": "A paragraph."}]},
+    {
+      "type": "mediaSingle",
+      "attrs": {"layout": "center"},
+      "content": [
+        {
+          "type": "media",
+          "attrs": {"type": "file", "id": "1", "collection": "c", "alt": "screen.png", "width": 640, "height": 480}
+        },
+        {
+          "type": "caption",
+          "content": [
+            {"type": "text", "text": "The "},
+            {"type": "text", "text": "login", "marks": [{"type": "em"}]},
+            {"type": "text", "text": " screen"}
+          ]
+        }
+      ]
+    },
+    {
+      "type": "mediaGroup",
+      "content": [
+        {"type": "media", "attrs": {"type": "external", "url": "https://example.com/a.png"}},
+        {"type": "media", "attrs": {"type": "external", "url": "https://example.com/b.png", "alt": "A diagram"}},
+        {"type": "media", "attrs": {"type": "file", "id": "2", "collection": "c"}}
+      ]
+    },
+    {"type": "blockCard", "attrs": {"url": "https://example.com/DEMO-3"}},
+    {"type": "extension", "attrs": {"extensionType": "demo", "extensionKey": "k", "text": "A macro's text"}},
+    {
+      "type": "bodiedExtension",
+      "attrs": {"extensionType": "demo", "extensionKey": "k", "text": "Text for a missing macro"},
+      "content": [{"type": "paragraph", "content": [{"type": "text", "text": "The macro's body"}]}]
+    },
+    {
+      "type": "layoutSection",
+      "content": [
+        {
+          "type": "layoutColumn",
+          "attrs": {"width": 50},
+          "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Left"}]}]
+        },
+        {
+          "type": "layoutColumn",
+          "attrs": {"width": 50},
+          "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Right"}]}]
+        }
+      ]
+    },
+    {
+      "type": "futureBlock",
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {"type": "text", "text": "Unknown, "},
+            {
+              "type": "futureInline",
+              "attrs": {"text": "stand-in"},
+              "content": [{"type": "text", "text": "with known text"}]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
