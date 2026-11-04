@@ -21,6 +21,7 @@ baton needs a config file, `config.json` in `~/Library/Application Support/baton
 - `branchPrefix`: what goes before a feature's slug in its branch's name (by default `feature/`).
 - `planApproval`: whether baton asks you before each feature starts, so that you can check the orchestrator's plan first (by default `true`).
 - `gate`: the command that checks the repo's code, such as `mise run check`, with no default: baton starts neither the orchestrator nor a feature in a repo without one. The engineer's handover, QA's approval and the lead's final report run it with `/bin/sh -c` in the feature's worktree, and wait until it passes. `"true"` checks nothing.
+- `jira`: your Jira Cloud site's host name and your email address at Atlassian, for `baton jira`, such as `{"site": "example.atlassian.net", "email": "you@example.com"}`, with no default.
 
 For example, one gate and QA on another model with a cap, for every repo, and two rounds with another branch prefix for one repo:
 
@@ -33,3 +34,13 @@ For example, one gate and QA on another model with a cap, for every repo, and tw
 ```
 
 baton checks the whole file each time it reads it, and refuses a file with a mistake, naming the file and the mistake.
+
+## Jira
+
+When you name a Jira Cloud ticket, the orchestrator reads it with `baton jira <KEY>`, such as `baton jira DEMO-1`, which prints the ticket and its comments as Markdown; you can run it too. baton only reads Jira, as you, with an API token that can only read:
+
+1. Set `jira` in the config file to your site and your email address at Atlassian.
+2. At [id.atlassian.com](https://id.atlassian.com/manage-profile/security/api-tokens), create an API token with scopes, for Jira, with the scope `read:jira-work` alone.
+3. Put it in your login Keychain, as baton's item for your email: `security add-generic-password -s baton-jira -a you@example.com -w`, which asks for the token, so that it stays out of your shell's history. When the token expires, put the new one in its place with the same command and `-U`.
+
+baton sends the token to Atlassian's gateway, `api.atlassian.com`, alone, and never prints it. Any program that runs as you can read the item, though, the roles' commands included, so give the token no other scope.

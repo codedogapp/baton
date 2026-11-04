@@ -13,8 +13,9 @@ const (
 		"orchestrator never does: baton runs the panes, and `baton status` shows the features."
 	orchestratorAgent = "starts another agent, which the orchestrator never does: start a " +
 		"feature, and its team does the work."
-	orchestratorBaton = "isn't the orchestrator's command: it runs `baton feature start`, " +
-		"`baton wait`, `baton answer`, `baton handover` and `baton status`."
+	orchestratorBaton = "isn't the orchestrator's command: it runs `baton jira`, " +
+		"`baton feature start`, `baton wait`, `baton answer`, `baton handover` and " +
+		"`baton status`."
 )
 
 // asks returns the guard's question to the user about the orchestrator's outward command, which
@@ -55,6 +56,7 @@ func TestGuardHookAsksTheUserAboutTheOrchestratorsCommands(t *testing.T) {
 		"baton answer demo-1 'Keep it'":          {},
 		"baton handover demo-1 --to lead":        {},
 		"baton status":                           {},
+		"baton jira DEMO-1":                      {},
 		"baton help feature":                     {},
 		"baton -h":                               {},
 		"baton -help":                            {},

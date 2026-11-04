@@ -136,13 +136,13 @@ func readAgent(t *testing.T, tree fs.FS, path string) (map[string]string, string
 
 // commands returns what the role's prompt must say for the role to move the work, to write its
 // notes in its session's files/ folder (decision 48), to wait, and to ask or answer: the
-// orchestrator starts features, answers questions and hands features back, and the others hand
-// over and ask.
+// orchestrator reads tickets, starts features, answers questions and hands features back, and the
+// others hand over and ask.
 func commands(role flow.Role) []string {
 	said := []string{"start `baton wait`", "in async mode", "in your session's `files/` folder"}
 	if role == flow.RoleOrchestrator {
-		return append(said, "baton feature start <slug> --brief", "baton handover <slug> --to",
-			"`baton answer <slug> \"<answer>\"`")
+		return append(said, "`baton jira <KEY>`", "baton feature start <slug> --brief",
+			"baton handover <slug> --to", "`baton answer <slug> \"<answer>\"`")
 	}
 
 	said = append(said, "baton handover --note", "start `baton ask \"<question>\"`")

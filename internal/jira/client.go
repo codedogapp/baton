@@ -37,11 +37,21 @@ type Client struct {
 	Token string
 }
 
+// CheckKey returns an error for a text that isn't a ticket's key, in any case, so that a caller can
+// refuse it before it reads the token.
+func CheckKey(key string) error {
+	if !keyPattern.MatchString(key) {
+		return fmt.Errorf("want a ticket's key, such as DEMO-1, not %q", key)
+	}
+
+	return nil
+}
+
 // Ticket reads the ticket with the key, which it takes in any case, as Jira's keys are in capitals,
 // and all its comments.
 func (c Client) Ticket(ctx context.Context, key string) (Ticket, error) {
-	if !keyPattern.MatchString(key) {
-		return Ticket{}, fmt.Errorf("want a ticket's key, such as DEMO-1, not %q", key)
+	if err := CheckKey(key); err != nil {
+		return Ticket{}, err
 	}
 
 	key = strings.ToUpper(key)

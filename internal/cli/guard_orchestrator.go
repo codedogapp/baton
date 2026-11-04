@@ -16,8 +16,9 @@ const featureStart = "baton feature start"
 
 // orchestratorCommands are baton's commands that the orchestrator runs unasked, by the names
 // that the guard gives them.
-var orchestratorCommands = slices.Concat(
-	[]string{"baton answer", "baton handover", "baton status", "baton wait"}, helpCommands)
+var orchestratorCommands = slices.Concat([]string{
+	"baton answer", "baton handover", "baton jira", "baton status", "baton wait",
+}, helpCommands)
 
 // orchestratorWhy says why the guard denies the orchestrator a command of each kind that it
 // denies, and what the orchestrator does instead.
@@ -26,8 +27,9 @@ var orchestratorWhy = map[guard.Kind]string{
 		"never does: baton runs the panes, and `baton status` shows the features.",
 	guard.Agent: "starts another agent, which the orchestrator never does: start a feature, " +
 		"and its team does the work.",
-	guard.Baton: "isn't the orchestrator's command: it runs `baton feature start`, " +
-		"`baton wait`, `baton answer`, `baton handover` and `baton status`.",
+	guard.Baton: "isn't the orchestrator's command: it runs `baton jira`, " +
+		"`baton feature start`, `baton wait`, `baton answer`, `baton handover` and " +
+		"`baton status`.",
 	guard.Unknown: why[guard.Unknown],
 }
 
