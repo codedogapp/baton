@@ -80,6 +80,11 @@ type PullRequest struct {
 	Branch, Title, Description string
 }
 
+// page is a link to a page on Bitbucket's site, as its answers give one, such as a pull request's.
+type page struct {
+	Href string `json:"href"`
+}
+
 // LoginError is the error for an answer of 401 Unauthorized to the user's email and token, which
 // Bitbucket gives for a wrong email, or a token that has expired (fact 47).
 type LoginError struct{ error }
@@ -98,9 +103,7 @@ func (c Client) Open(ctx context.Context, request PullRequest) (string, error) {
 
 	var created struct {
 		Links struct {
-			HTML struct {
-				Href string `json:"href"`
-			} `json:"html"`
+			HTML page `json:"html"`
 		} `json:"links"`
 	}
 
