@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -20,18 +21,30 @@ import (
 // The feature that the tests hand over.
 const slug = "demo-1"
 
+// githubTokens are the variables that give gh and other tools a GitHub token, which a role's pane
+// goes without (decision 55).
+var githubTokens = []string{
+	"GH_TOKEN",
+	"GITHUB_TOKEN",
+	"GH_ENTERPRISE_TOKEN",
+	"GITHUB_ENTERPRISE_TOKEN",
+}
+
 // TestMain runs git without the user's config, in the C locale, with a test author: baton's own
 // git too, which makes the features' branches and worktrees. It clears the variables that git sets
-// for its hooks, such as GIT_DIR, which would point git at the repo that runs the hook. It gives
-// the tests an empty home folder, which holds the user's config and cache folders, since it
-// clears the XDG ones, so that baton reads none of the user's files, such as its config file. The
-// tests share that folder, so a test that writes there, as a config file, moves it into one of its
-// own first: one that leaves anything there fails them all.
+// for its hooks, such as GIT_DIR, which would point git at the repo that runs the hook, and those
+// that hold a GitHub token, copilot's too, so that no test hands the user's to a stand-in, and a
+// role's environment is the same on every machine. It gives the tests an empty home folder, which
+// holds the user's config and cache folders, since it clears the XDG ones, so that baton reads none
+// of the user's files, such as its config file. The tests share that folder, so a test that writes
+// there, as a config file, moves it into one of its own first: one that leaves anything there
+// fails them all.
 func TestMain(m *testing.M) {
 	var errs []error
 
 	for _, env := range os.Environ() {
-		if name, _, _ := strings.Cut(env, "="); strings.HasPrefix(name, "GIT_") {
+		if name, _, _ := strings.Cut(env, "="); strings.HasPrefix(name, "GIT_") ||
+			slices.Contains(githubTokens, name) || name == "COPILOT_GITHUB_TOKEN" {
 			errs = append(errs, os.Unsetenv(name))
 		}
 	}
