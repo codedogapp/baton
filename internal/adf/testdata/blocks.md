@@ -1,4 +1,6 @@
-A paragraph.
+Above the rule.
+
+---
 
 [attachment: screen.png]
 
@@ -9,6 +11,18 @@ The *login* screen
 [attachment: A diagram]
 
 [attachment]
+
+**Details**
+
+Folded at first.
+
+**More**
+
+Inside.
+
+No title.
+
+**Empty**
 
 https://example.com/DEMO-3
 

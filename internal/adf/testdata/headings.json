@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "type": "doc",
+  "content": [
+    {"type": "heading", "attrs": {"level": 1}, "content": [{"type": "text", "text": "Goal"}]},
+    {
+      "type": "heading",
+      "attrs": {"level": 3},
+      "content": [{"type": "text", "text": "Out of "}, {"type": "text", "text": "scope", "marks": [{"type": "em"}]}]
+    },
+    {"type": "heading", "attrs": {"level": 9}, "content": [{"type": "text", "text": "Too deep"}]},
+    {"type": "heading", "attrs": {"level": 0}, "content": [{"type": "text", "text": "Too high"}]},
+    {"type": "heading", "content": [{"type": "text", "text": "No level"}]}
+  ]
+}

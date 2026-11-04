@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "type": "doc",
+  "content": [
+    {
+      "type": "table",
+      "attrs": {"isNumberColumnEnabled": false, "layout": "default"},
+      "content": [
+        {
+          "type": "tableRow",
+          "content": [
+            {
+              "type": "tableHeader",
+              "attrs": {},
+              "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Case", "marks": [{"type": "strong"}]}]}]
+            },
+            {"type": "tableHeader", "attrs": {}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Result"}]}]},
+            {"type": "tableHeader", "attrs": {}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Note"}]}]}
+          ]
+        },
+        {
+          "type": "tableRow",
+          "content": [
+            {"type": "tableCell", "attrs": {}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "a | b"}]}]},
+            {
+              "type": "tableCell",
+              "attrs": {"colspan": 1},
+              "content": [
+                {"type": "paragraph", "content": [{"type": "text", "text": "pass"}]},
+                {"type": "paragraph", "content": [{"type": "text", "text": "twice"}]}
+              ]
+            },
+            {"type": "tableCell", "attrs": {}, "content": [{"type": "paragraph", "content": []}]}
+          ]
+        },
+        {
+          "type": "tableRow",
+          "content": [
+            {"type": "tableCell", "attrs": {}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "short row"}]}]}
+          ]
+        }
+      ]
+    },
+    {"type": "table", "content": []}
+  ]
+}

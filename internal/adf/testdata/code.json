@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "type": "doc",
+  "content": [
+    {
+      "type": "codeBlock",
+      "attrs": {"language": "go"},
+      "content": [{"type": "text", "text": "func main() {\n    fmt.Println(\"hi\")\n}"}]
+    },
+    {"type": "codeBlock", "content": [{"type": "text", "text": "Fence code with ``` in Markdown."}]},
+    {
+      "type": "bulletList",
+      "content": [
+        {
+          "type": "listItem",
+          "content": [
+            {"type": "paragraph", "content": [{"type": "text", "text": "Run:"}]},
+            {"type": "codeBlock", "attrs": {"language": "sh"}, "content": [{"type": "text", "text": "make\n\nmake test"}]}
+          ]
+        }
+      ]
+    },
+    {
+      "type": "blockquote",
+      "content": [
+        {"type": "paragraph", "content": [{"type": "text", "text": "Quoted."}]},
+        {"type": "paragraph", "content": [{"type": "text", "text": "Twice."}]}
+      ]
+    },
+    {
+      "type": "panel",
+      "attrs": {"panelType": "warning"},
+      "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Mind the gap."}]}]
+    }
+  ]
+}
