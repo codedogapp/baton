@@ -29,27 +29,27 @@ type Mark struct {
 // word in its place. A node of an unknown type shows its content, or the text that stands in for
 // it.
 func Markdown(node Node) string {
-	return blocks([]Node{node})
+	return blocks([]Node{node}, "\n\n")
 }
 
-// blocks renders nodes one after the other, with a blank line between them. A run of inline
-// nodes makes one block, and an empty block makes none.
-func blocks(nodes []Node) string {
+// blocks renders nodes one after the other, with sep between them. A run of inline nodes makes
+// one block, and an empty block makes none.
+func blocks(nodes []Node, sep string) string {
 	parts := make([]string, 0, len(nodes))
 	for len(nodes) > 0 {
-		var part string
 		if run := inlineRun(nodes); run > 0 {
-			part, nodes = inline(nodes[:run]), nodes[run:]
+			parts, nodes = append(parts, inline(nodes[:run])), nodes[run:]
 		} else {
-			part, nodes = block(nodes[0]), nodes[1:]
-		}
-
-		if part != "" {
-			parts = append(parts, part)
+			parts, nodes = append(parts, block(nodes[0])), nodes[1:]
 		}
 	}
 
-	return strings.Join(parts, "\n\n")
+	return join(sep, parts...)
+}
+
+// join joins the parts that aren't empty, with sep between them.
+func join(sep string, parts ...string) string {
+	return strings.Join(slices.DeleteFunc(parts, func(part string) bool { return part == "" }), sep)
 }
 
 // inlineRun returns how many of the nodes, from the first on, are inline nodes.
@@ -81,4 +81,14 @@ func attr(attrs map[string]any, key string) string {
 	text, _ := attrs[key].(string)
 
 	return text
+}
+
+// number returns the number in the attribute, or fallback if there is none.
+func number(attrs map[string]any, key string, fallback int) int {
+	value, ok := attrs[key].(float64)
+	if !ok {
+		return fallback
+	}
+
+	return int(value)
 }

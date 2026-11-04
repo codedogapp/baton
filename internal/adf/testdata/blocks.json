@@ -2,7 +2,8 @@
   "version": 1,
   "type": "doc",
   "content": [
-    {"type": "paragraph", "content": [{"type": "text", "text": "A paragraph."}]},
+    {"type": "paragraph", "content": [{"type": "text", "text": "Above the rule."}]},
+    {"type": "rule"},
     {
       "type": "mediaSingle",
       "attrs": {"layout": "center"},
@@ -29,6 +30,24 @@
         {"type": "media", "attrs": {"type": "file", "id": "2", "collection": "c"}}
       ]
     },
+    {
+      "type": "expand",
+      "attrs": {"title": "Details"},
+      "content": [
+        {"type": "paragraph", "content": [{"type": "text", "text": "Folded at first."}]},
+        {
+          "type": "nestedExpand",
+          "attrs": {"title": "More"},
+          "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Inside."}]}]
+        }
+      ]
+    },
+    {
+      "type": "expand",
+      "attrs": {"title": ""},
+      "content": [{"type": "paragraph", "content": [{"type": "text", "text": "No title."}]}]
+    },
+    {"type": "expand", "attrs": {"title": "Empty"}, "content": []},
     {"type": "blockCard", "attrs": {"url": "https://example.com/DEMO-3"}},
     {"type": "extension", "attrs": {"extensionType": "demo", "extensionKey": "k", "text": "A macro's text"}},
     {

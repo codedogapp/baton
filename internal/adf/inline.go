@@ -73,15 +73,15 @@ func code(text string) string {
 		pad = " "
 	}
 
-	ticks := fence(text)
+	ticks := fence(text, 1)
 
 	return ticks + pad + text + pad + ticks
 }
 
-// fence returns the shortest run of backticks that the code doesn't hold, so that the code can't
-// end its own fence.
-func fence(code string) string {
-	ticks := "`"
+// fence returns the shortest run of backticks, at least least long, that the code doesn't hold,
+// so that the code can't end its own fence.
+func fence(code string, least int) string {
+	ticks := strings.Repeat("`", least)
 	for strings.Contains(code, ticks) {
 		ticks += "`"
 	}
