@@ -93,3 +93,28 @@ func TestNotePathIsTheNotesFile(t *testing.T) {
 		t.Errorf("the brief's path holds %q, want %q", got, brief)
 	}
 }
+
+func TestUpdateClosesAFeatureWithoutANote(t *testing.T) {
+	store := created(t)
+	entry := state.Entry{Event: state.Event{Kind: state.EventClose, Role: flow.RoleOrchestrator}}
+	closing := func(feature *state.Feature) error {
+		next, err := feature.Flow.Close()
+		feature.Flow, feature.Work = next, state.Work{}
+
+		return err
+	}
+
+	want := started(t)
+	want.Flow.Holder, want.Flow.Status = flow.RoleOrchestrator, flow.StatusClosed
+
+	if got, err := store.Update(slug, entry, closing); err != nil || got != want {
+		t.Fatalf("Update = %+v, %v; want %+v", got, err, want)
+	}
+
+	if got := events(t, store); len(got) != 2 || got[1].Kind != state.EventClose ||
+		got[1].Note != "" || got[1].Flow != want.Flow {
+		t.Errorf("the journal holds %+v, want the close after the start, without a note", got)
+	}
+
+	wantNotes(t, store, "01-orchestrator-to-lead.md")
+}

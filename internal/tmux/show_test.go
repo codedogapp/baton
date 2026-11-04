@@ -83,6 +83,31 @@ func TestAttachCommandNamesTheServer(t *testing.T) {
 	}
 }
 
+// TestKillSessionEndsTheSessionByItsWholeName ends a session while one whose name starts with its
+// name runs too, then ends it again, which tmux refuses, rather than end the other one.
+func TestKillSessionEndsTheSessionByItsWholeName(t *testing.T) {
+	srv := server(t)
+	dir, _ := folder(t)
+
+	making(t, srv, "baton-repo-demo-1", dir)
+	making(t, srv, "baton-repo-demo-10", dir)
+
+	if err := srv.KillSession(t.Context(), "baton-repo-demo-1"); err != nil {
+		t.Fatal(err)
+	}
+
+	listed := on(t, srv, "list-sessions", "-F", "#{session_name}")
+	if listed != "baton-repo-demo-10" {
+		t.Errorf("tmux lists the sessions %q; want baton-repo-demo-10 alone", listed)
+	}
+
+	err := srv.KillSession(t.Context(), "baton-repo-demo-1")
+	if want := "tmux kill-session: can't find session: baton-repo-demo-1"; err == nil ||
+		err.Error() != want {
+		t.Errorf("KillSession of a session that isn't there: %v; want %s", err, want)
+	}
+}
+
 // making makes a session with one pane, titled with the session's name, in the folder.
 func making(t *testing.T, srv tmux.Server, name, dir string) {
 	t.Helper()

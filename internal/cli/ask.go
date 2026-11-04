@@ -80,9 +80,9 @@ func asked(question state.Question) func(*state.Feature) error {
 
 // awaitAnswer reads the feature every second, without its lock, until the question has its
 // answer, and returns the answer. Like baton wait, it marks the role as waiting while it waits
-// (decision 47). It fails if another question has taken the question's place, or if the holder's
+// (decision 47). It fails if another question has taken the question's place, if the holder's
 // handover has cleared it before this ask read the answer, as when another ask of the question
-// read it first.
+// read it first, or if the user has closed the feature.
 func awaitAnswer(ctx context.Context, store state.Store, slug string, question state.Question) (
 	string, error,
 ) {
@@ -93,6 +93,8 @@ func awaitAnswer(ctx context.Context, store state.Store, slug string, question s
 		}
 
 		switch last := feature.Question; {
+		case feature.Flow.Status == flow.StatusClosed:
+			return "", fmt.Errorf("%s is closed, so no answer comes", slug)
 		case last.Text == "":
 			return "", fmt.Errorf("%s was handed over before this ask read the answer", slug)
 		case last.From != question.From || last.Text != question.Text:

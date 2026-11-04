@@ -42,12 +42,14 @@ type Env struct {
 }
 
 // Server is a tmux server, as tmux.Server is: baton makes the sessions of the orchestrator and of
-// the features there, and shows the orchestrator's in the user's terminal.
+// the features there, shows the orchestrator's in the user's terminal, and ends a feature's once
+// the feature closes.
 type Server interface {
 	NewSession(ctx context.Context, session tmux.Session) error
 	SessionDir(ctx context.Context, name string) (string, bool)
 	SwitchClient(ctx context.Context, name string) error
 	AttachCommand(name string) []string
+	KillSession(ctx context.Context, name string) error
 }
 
 // The exit codes of a command that didn't run to its end.
@@ -64,6 +66,7 @@ Commands:
   answer         answer the question of a feature's role, in the orchestrator's pane
   ask            ask the orchestrator a question, in a role's pane, then wait for the answer
   deliver        push a ready feature's branch and open its pull request on GitHub
+  feature close  close a feature: end its tmux session, keeping its branch and its worktree
   feature start  start a feature from a brief: its branch, its worktree and its tmux session
   handover       hand a feature over to the next role, with a note
   hook guard     copilot's tool hook: deny a role what the guard watches, before it runs
@@ -94,7 +97,7 @@ var commands = map[string]commandFunc{
 
 // groups are baton's commands of two words, by their first word, then their second.
 var groups = map[string]map[string]commandFunc{
-	"feature": {"start": startFeature},
+	"feature": {"close": closeFeature, "start": startFeature},
 	"hook":    {"guard": hookGuard, "stop": hookStop},
 }
 

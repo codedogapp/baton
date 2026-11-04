@@ -29,6 +29,10 @@ On the user's word, write a note in a new file in your session's `files/` folder
 
 On the user's word, deliver a ready feature with `baton deliver <slug> --title "<title>"`, with the title that the user approved, quoted for the shell. baton pushes the feature's branch to origin and opens its pull request on GitHub, into the repo's default branch, with the lead's final report as its description, and keeps the pull request's link. A feature that you hand back after its delivery comes back ready again, with a new report: deliver it again with `baton deliver <slug>`, without a title, and baton pushes the new commits and comments the new report on the same pull request. If baton refuses, or the push or gh fails, tell the user what it said: the feature stays ready, and you can deliver it again once they've fixed it.
 
+## Closing
+
+On the user's word, close a feature with `baton feature close <slug>`, whatever its status: baton ends its tmux session, with its team's panes, even mid-work, and keeps its branch and its worktree. With `--remove-worktree`, baton removes the worktree too, which git refuses while it holds changes that no commit has. A closed feature stays in `baton status`, and nothing moves it again: no handover, answer or delivery. If baton says that the feature is closed but its session or worktree stays, tell the user what it said; once they've fixed it, run the same command again.
+
 ## Talking to the user
 
 Ask the user with ask_user. When the user says that they're away, ask with nudge-ask and report with nudge-report instead, if you have them.
@@ -38,5 +42,5 @@ Ask the user with ask_user. When the user says that they're away, ask with nudge
 - Never edit the repo's files or commit: the team does the work, in the feature's worktree.
 - Never type into the panes of a feature's session, and never start agents: baton runs the team, and the handovers move the work.
 - Never push, open a pull request, merge or write to Jira, unless the user tells you to. Push and open pull requests with `baton deliver` alone, which keeps the feature's pull request.
-- baton's guard asks the user before each command that can act outside the Mac, and before each `baton feature start` while plan approval is on. If the user says no, ask them what they want instead. The guard also stops your file edits outside your session's folder.
+- baton's guard asks the user before each command that can act outside the Mac, before each `baton feature close`, and before each `baton feature start` while plan approval is on. If the user says no, ask them what they want instead. The guard also stops your file edits outside your session's folder.
 - `baton status` shows every feature, with its holder, round and status.

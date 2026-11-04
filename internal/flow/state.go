@@ -1,6 +1,9 @@
 package flow
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // Status says whether the roles work on a feature or the orchestrator holds it, and why.
 type Status string
@@ -11,12 +14,13 @@ const (
 	StatusEscalated Status = "escalated" // A rejection came after the last round; the user decides.
 	StatusReady     Status = "ready"     // The lead's final report is in; the user decides.
 	StatusDelivered Status = "delivered" // baton deliver pushed it, and the user decides again.
+	StatusClosed    Status = "closed"    // The user closed it, and nothing moves it again.
 )
 
 // known reports whether the status is one of the statuses above.
 func (s Status) known() bool {
 	switch s {
-	case StatusRunning, StatusEscalated, StatusReady, StatusDelivered:
+	case StatusRunning, StatusEscalated, StatusReady, StatusDelivered, StatusClosed:
 		return true
 	default:
 		return false
@@ -52,12 +56,29 @@ func Start(roundCap int) (State, error) {
 // orchestrator still holds it: the user can hand it back to the lead, for changes that a later
 // delivery brings to the same pull request.
 func (s State) Deliver() (State, error) {
+	if s.Status == StatusClosed {
+		return State{}, errors.New("the feature is closed, and nothing delivers it")
+	}
+
 	if s.Status != StatusReady {
 		return State{}, fmt.Errorf("a feature that is %s isn't ready to deliver: "+
 			"it is once the lead's final report comes", s.Status)
 	}
 
 	s.Status = StatusDelivered
+
+	return s, nil
+}
+
+// Close returns the state of a feature that the user closes, whatever its status: the orchestrator
+// holds it, at its round, and nothing moves it again (decision 63). It fails if the feature is
+// closed already.
+func (s State) Close() (State, error) {
+	if s.Status == StatusClosed {
+		return State{}, errors.New("the feature is closed already")
+	}
+
+	s.Holder, s.Status = RoleOrchestrator, StatusClosed
 
 	return s, nil
 }
@@ -70,8 +91,8 @@ func (s State) Gated() bool {
 	return s.Holder == RoleQA || s.Holder == RoleReviewer || s.Status == StatusReady
 }
 
-// Validate returns an error if Start and Next can't make the state, as when it comes from a
-// damaged file.
+// Validate returns an error if Start, Next, Deliver and Close can't make the state, as when it
+// comes from a damaged file.
 func (s State) Validate() error {
 	switch {
 	case !s.Holder.Known():
@@ -80,7 +101,8 @@ func (s State) Validate() error {
 		return fmt.Errorf("unknown status %q", s.Status)
 	case (s.Holder == RoleOrchestrator) == (s.Status == StatusRunning):
 		return fmt.Errorf("%s can't hold a feature that is %s", s.Holder, s.Status)
-	case s.Round == 0 && s.Holder != RoleLead:
+	// A feature that the user closes before its first round is the orchestrator's too.
+	case s.Round == 0 && s.Holder != RoleLead && s.Status != StatusClosed:
 		return fmt.Errorf("%s can't hold a feature before its first round", s.Holder)
 	default:
 		return s.checkRounds()

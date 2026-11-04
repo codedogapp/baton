@@ -1,6 +1,9 @@
 package flow
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // Verdict is QA's or the reviewer's judgement of the engineer's work.
 type Verdict string
@@ -35,11 +38,14 @@ func (s State) Next(handover Handover) (State, error) {
 	}
 }
 
-// check returns an error if the handover breaks the rules of who may hand over, and how.
+// check returns an error if the handover breaks the rules of who may hand over, and how, or if
+// the feature is closed.
 func (s State) check(handover Handover) error {
 	from := handover.From
 
 	switch {
+	case s.Status == StatusClosed:
+		return errors.New("the feature is closed, and nothing hands it over again")
 	case from != s.Holder:
 		return fmt.Errorf("%s holds the feature, not %s", s.Holder, from)
 	case from != RoleOrchestrator && handover.To != "":

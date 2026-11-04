@@ -158,12 +158,15 @@ func pickup(role flow.Role) state.Entry {
 
 // picked returns the change that marks the role's work picked up. It fails with errNoWork while
 // another role holds the feature. A role that holds it with no work left to pick up gets a
-// reason instead, since no work can come to it before it hands the feature over. The orchestrator
+// reason instead, since no work can come to it before it hands the feature over, and so does a
+// role whose feature is closed, which ends a wait that outlives the role's pane. The orchestrator
 // gets errNoWork then too: it holds the features that wait on the user, and looks for work in the
 // others.
 func picked(role flow.Role) func(*state.Feature) error {
 	return func(feature *state.Feature) error {
 		switch work := &feature.Work; {
+		case feature.Flow.Status == flow.StatusClosed && role != flow.RoleOrchestrator:
+			return fmt.Errorf("%s is closed, so no work comes to the %s", feature.Slug, role)
 		case feature.Flow.Holder != role:
 			return errNoWork
 		case work.Note != "" && !work.Picked:

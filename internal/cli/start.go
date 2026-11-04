@@ -90,11 +90,17 @@ func newLaunch(ctx context.Context, env Env, slug string) (launch, error) {
 	return launch{
 		store: store, slug: slug, rounds: settings.RoundCap, mainDir: mainDir, worktree: worktree,
 		session: tmux.Session{
-			Name:  tmux.Name("baton-" + name),
+			Name:  featureSession(worktree.Path),
 			Dir:   worktree.Path,
 			Panes: panes(self, slug),
 		},
 	}, nil
+}
+
+// featureSession returns the name of the tmux session of the feature with the worktree: baton-,
+// then the worktree's folder's name (decision 41).
+func featureSession(worktree string) string {
+	return tmux.Name("baton-" + filepath.Base(worktree))
 }
 
 // parseStart reads baton feature start's command line: the slug, and the brief's file, whose flag
