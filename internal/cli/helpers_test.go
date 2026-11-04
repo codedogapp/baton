@@ -142,7 +142,7 @@ func started(t *testing.T, mainDir string, now flow.State) state.Store {
 	t.Helper()
 
 	store := state.Store{Dir: filepath.Join(mainDir, ".git", "baton")}
-	add(t, store, state.Feature{Slug: slug, Flow: now})
+	add(t, store, state.Feature{Slug: slug, Worktree: mainDir, Flow: now})
 
 	return store
 }

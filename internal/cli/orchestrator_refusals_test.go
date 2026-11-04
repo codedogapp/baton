@@ -17,6 +17,8 @@ import (
 // end, and writes nothing: without features, and once the orchestrator holds them all. A broken
 // feature fails the wait too.
 func TestOrchestratorsWaitRefusesWhenNoFeatureRuns(t *testing.T) {
+	withGate(t, "true")
+
 	synctest.Test(t, func(t *testing.T) {
 		mainDir, _ := repos(t)
 		refused := result{code: 1, stderr: noneRuns}

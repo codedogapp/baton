@@ -15,6 +15,8 @@ import (
 // baton undoes the parts that it made: git lists the worktrees and branches that it listed before,
 // and baton's folder holds only the feature's lock, which stays (decision 40).
 func TestStartFeatureUndoesWhatItMade(t *testing.T) {
+	withGate(t, "true")
+
 	cases := []struct {
 		name   string
 		branch bool                                // Whether the feature's branch exists before.
@@ -80,6 +82,8 @@ func TestStartFeatureUndoesWhatItMade(t *testing.T) {
 // TestStartFeatureReportsWhatItCantUndo makes a part of the feature fail, and then its undo, and
 // checks that baton reports both.
 func TestStartFeatureReportsWhatItCantUndo(t *testing.T) {
+	withGate(t, "true")
+
 	private, readOnly := os.FileMode(0o700), os.FileMode(0o500)
 
 	// locks makes the folders read-only until the test ends.

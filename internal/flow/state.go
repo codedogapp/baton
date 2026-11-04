@@ -46,6 +46,14 @@ func Start(roundCap int) (State, error) {
 	return state, nil
 }
 
+// Gated reports whether the handover that makes the state waits for the repo's gate to pass: the
+// engineer's, which gives the feature to QA, QA's approval, which gives it to the reviewer, and the
+// lead's final report, which makes it ready. The roles that make them vouch for the code (decision
+// 56).
+func (s State) Gated() bool {
+	return s.Holder == RoleQA || s.Holder == RoleReviewer || s.Status == StatusReady
+}
+
 // Validate returns an error if Start and Next can't make the state, as when it comes from a
 // damaged file.
 func (s State) Validate() error {

@@ -15,10 +15,15 @@ import (
 )
 
 // TestHandoverPassesTheFeatureAlong walks a round that the reviewer rejects, from a subfolder of
-// the main worktree and from the linked worktree, which share baton's folder.
+// the main worktree and from the linked worktree, which share baton's folder. The engineer's
+// handover and QA's approval run the gate in the feature's worktree first.
 func TestHandoverPassesTheFeatureAlong(t *testing.T) {
+	withGate(t, checked)
+
 	mainDir, linked := repos(t)
 	store := started(t, mainDir, fresh())
+
+	gated := ranGate(mainDir, checked, "checked in main\n")
 
 	sub := filepath.Join(mainDir, "docs")
 	if err := os.Mkdir(sub, 0o700); err != nil {
@@ -30,22 +35,21 @@ func TestHandoverPassesTheFeatureAlong(t *testing.T) {
 		role     flow.Role
 		relative bool // Whether --note gets the note's path relative to the folder.
 		verdict  []string
+		gate     string // What the gate printed, if it ran.
 		want     string
 	}{
-		{sub, flow.RoleLead, false, nil, "engineer: running, round 1 of 3"},
-		{linked, flow.RoleEngineer, true, nil, "qa: running, round 1 of 3"},
+		{sub, flow.RoleLead, false, nil, "", "engineer: running, round 1 of 3"},
+		{linked, flow.RoleEngineer, true, nil, gated, "qa: running, round 1 of 3"},
 		{
-			linked,
-			flow.RoleQA,
-			true,
+			linked, flow.RoleQA, true,
 			[]string{"--verdict", "approve"},
+			gated,
 			"reviewer: running, round 1 of 3",
 		},
 		{
-			linked,
-			flow.RoleReviewer,
-			true,
+			linked, flow.RoleReviewer, true,
 			[]string{"--verdict=reject"},
+			"",
 			"engineer: running, round 2 of 3",
 		},
 	}
@@ -59,7 +63,7 @@ func TestHandoverPassesTheFeatureAlong(t *testing.T) {
 		got := run(t, step.dir, paneOf(step.role),
 			append([]string{"handover", "--note", note}, step.verdict...)...)
 
-		want := result{stdout: "Handed demo-1 over to " + step.want + ".\n"}
+		want := result{stdout: step.gate + "Handed demo-1 over to " + step.want + ".\n"}
 		if got != want {
 			t.Fatalf("the %s's handover: got %+v; want %+v", step.role, got, want)
 		}
@@ -78,8 +82,8 @@ func TestHandoverPassesTheFeatureAlong(t *testing.T) {
 	wantJournal(t, store, []logged{
 		{"start orchestrator  01-orchestrator-to-lead.md", "Build the demo.\n"},
 		{"handover lead  02-lead-to-engineer.md", "From the lead.\n"},
-		{"handover engineer  03-engineer-to-qa.md", "From the engineer.\n"},
-		{"handover qa approve 04-qa-to-reviewer.md", "From the qa.\n"},
+		{"handover engineer  03-engineer-to-qa.md (gate: " + checked + ")", "From the engineer.\n"},
+		{"handover qa approve 04-qa-to-reviewer.md (gate: " + checked + ")", "From the qa.\n"},
 		{"handover reviewer reject 05-reviewer-to-engineer.md", "From the reviewer.\n"},
 	})
 }
@@ -197,7 +201,8 @@ type logged struct {
 	note  string
 }
 
-// wantJournal checks the feature's events, in order, and their notes, if any.
+// wantJournal checks the feature's events, in order, with the gate that each one ran, if any, and
+// their notes, if any.
 func wantJournal(t *testing.T, store state.Store, want []logged) {
 	t.Helper()
 
@@ -224,10 +229,12 @@ func wantJournal(t *testing.T, store state.Store, want []logged) {
 			}
 		}
 
-		got = append(got, logged{
-			event: fmt.Sprintf("%s %s %s %s", event.Kind, event.Role, event.Verdict, event.Note),
-			note:  string(note) + event.Text,
-		})
+		line := fmt.Sprintf("%s %s %s %s", event.Kind, event.Role, event.Verdict, event.Note)
+		if event.Gate != "" {
+			line += " (gate: " + event.Gate + ")"
+		}
+
+		got = append(got, logged{event: line, note: string(note) + event.Text})
 	}
 
 	if !slices.Equal(got, want) {

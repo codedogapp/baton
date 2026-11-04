@@ -17,6 +17,8 @@ import (
 // clears the question, and ask the same one in its next turn: a new question, which waits for its
 // own answer.
 func TestAskInTheNextTurnAsksAnew(t *testing.T) {
+	withGate(t, "true")
+
 	synctest.Test(t, func(t *testing.T) {
 		mainDir, _ := repos(t)
 		store := started(t, mainDir, fresh())
