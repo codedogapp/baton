@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "type": "doc",
+  "content": [
+    {
+      "type": "paragraph",
+      "content": [
+        {"type": "text", "text": "Plain, "},
+        {"type": "text", "text": "strong", "marks": [{"type": "strong"}]},
+        {"type": "text", "text": ", "},
+        {"type": "text", "text": "em", "marks": [{"type": "em"}]},
+        {"type": "text", "text": ", "},
+        {"type": "text", "text": "struck", "marks": [{"type": "strike"}]},
+        {"type": "text", "text": ", "},
+        {
+          "type": "text",
+          "text": "underlined",
+          "marks": [{"type": "underline"}, {"type": "textColor", "attrs": {"color": "#ff0000"}}]
+        },
+        {"type": "text", "text": ", "},
+        {"type": "text", "text": "bold code", "marks": [{"type": "strong"}, {"type": "code"}]},
+        {"type": "text", "text": " and "},
+        {"type": "text", "text": "make check", "marks": [{"type": "code"}]},
+        {"type": "text", "text": "."}
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {"type": "text", "text": "See "},
+        {
+          "type": "text",
+          "text": "the docs",
+          "marks": [{"type": "link", "attrs": {"href": "https://example.com/docs"}}, {"type": "strong"}]
+        },
+        {"type": "text", "text": ", then run "},
+        {"type": "text", "text": "a``b", "marks": [{"type": "code"}]},
+        {"type": "hardBreak"},
+        {"type": "text", "text": "on a new line."}
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {"type": "text", "text": "Ticks: "},
+        {"type": "text", "text": "`x", "marks": [{"type": "code"}]},
+        {"type": "text", "text": " and "},
+        {"type": "text", "text": "y`", "marks": [{"type": "code"}]}
+      ]
+    },
+    {"type": "paragraph", "content": []},
+    {"type": "paragraph", "content": [{"type": "text", "text": "Last."}]}
+  ]
+}

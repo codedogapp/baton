@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "type": "doc",
+  "content": [
+    {
+      "type": "taskList",
+      "attrs": {"localId": "a"},
+      "content": [
+        {
+          "type": "taskItem",
+          "attrs": {"localId": "b", "state": "TODO"},
+          "content": [
+            {"type": "text", "text": "Ask "},
+            {"type": "mention", "attrs": {"id": "0", "text": "@Demo User", "accessLevel": ""}},
+            {"type": "text", "text": " "},
+            {"type": "emoji", "attrs": {"shortName": ":smile:", "id": "1f604", "text": "😄"}},
+            {"type": "emoji", "attrs": {"shortName": ":demo:", "id": "1"}},
+            {"type": "text", "text": " by "},
+            {"type": "date", "attrs": {"timestamp": "1767223800000"}},
+            {"type": "text", "text": " or "},
+            {"type": "date", "attrs": {"timestamp": "soon"}},
+            {"type": "text", "text": ","},
+            {"type": "hardBreak"},
+            {"type": "status", "attrs": {"text": "IN PROGRESS", "color": "blue", "localId": "c"}},
+            {"type": "text", "text": ", "},
+            {"type": "inlineCard", "attrs": {"url": "https://example.com/DEMO-2"}},
+            {"type": "text", "text": ", "},
+            {"type": "mediaInline", "attrs": {"type": "file", "id": "d", "collection": "e", "alt": "log.txt"}},
+            {"type": "text", "text": ", "},
+            {"type": "placeholder", "attrs": {"text": "a placeholder"}},
+            {"type": "text", "text": " and "},
+            {"type": "inlineExtension", "attrs": {"extensionType": "demo", "extensionKey": "f", "text": "an extension"}}
+          ]
+        }
+      ]
+    }
+  ]
+}
