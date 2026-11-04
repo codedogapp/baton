@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"net/http"
 	"slices"
 	"strings"
 
@@ -33,6 +34,11 @@ type Env struct {
 	Executable func() (string, error)
 	// Tmux is the user's tmux server, where baton makes its sessions.
 	Tmux Server
+	// HTTP is the client that baton jira reads Jira with.
+	HTTP *http.Client
+	// Keychain returns the password of the generic item for the service and the account, from
+	// the user's keychains, as keychain.Tool.Password does.
+	Keychain func(ctx context.Context, service, account string) (string, error)
 }
 
 // Server is a tmux server, as tmux.Server is: baton makes the sessions of the orchestrator and of
@@ -61,6 +67,7 @@ Commands:
   handover       hand a feature over to the next role, with a note
   hook guard     copilot's tool hook: deny a role what the guard watches, before it runs
   hook stop      copilot's stop hook: send a pane's copilot that stops too soon back to work
+  jira           print a Jira ticket and its comments as Markdown, for the orchestrator's plan
   pane           become the pane's copilot: the orchestrator's, or the role's once it has work
   status         list the repo's features, with their holder, round and status
   wait           wait for the role's next work, then pick it up and print it
@@ -77,6 +84,7 @@ var commands = map[string]commandFunc{
 	"answer":   answer,
 	"ask":      ask,
 	"handover": handover,
+	"jira":     showTicket,
 	"pane":     pane,
 	"status":   status,
 	"wait":     wait,

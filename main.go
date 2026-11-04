@@ -3,11 +3,14 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/codedogapp/baton/internal/cli"
+	"github.com/codedogapp/baton/internal/keychain"
 	"github.com/codedogapp/baton/internal/tmux"
 )
 
@@ -31,6 +34,8 @@ func main() {
 		Exec:       syscall.Exec,
 		Executable: os.Executable,
 		Tmux:       tmux.Server{},
+		HTTP:       &http.Client{Timeout: time.Minute},
+		Keychain:   keychain.Security.Password,
 	})
 
 	stop()

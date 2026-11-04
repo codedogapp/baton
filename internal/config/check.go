@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/mail"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -51,6 +53,10 @@ func (s Settings) check() error {
 		return fmt.Errorf("gate %q: want the command that checks the repo's code", s.Gate)
 	}
 
+	if err := s.Jira.check(); err != nil {
+		return fmt.Errorf("jira: %w", err)
+	}
+
 	for _, role := range slices.Sorted(maps.Keys(s.Roles)) {
 		if err := s.Roles[role].check(role); err != nil {
 			return fmt.Errorf("roles: %s: %w", role, err)
@@ -77,6 +83,30 @@ func (r Role) check(role flow.Role) error {
 	}
 
 	return checkTools(role, r.ExtraTools)
+}
+
+// hostName matches a host's name, such as example.atlassian.net: letters, digits, dots and dashes,
+// with a letter or a digit at each end, so no scheme, user, port or path.
+var hostName = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$`)
+
+// check returns an error for the first Jira setting that baton can't use.
+func (j Jira) check() error {
+	switch {
+	case j.Site != "" && !hostName.MatchString(j.Site):
+		return fmt.Errorf("site %q: want the site's host name, such as example.atlassian.net",
+			j.Site)
+	case j.Email != "" && !address(j.Email):
+		return fmt.Errorf("email %q: want your email address at Atlassian alone", j.Email)
+	}
+
+	return nil
+}
+
+// address reports whether the text is an email address alone, without a name or spaces.
+func address(text string) bool {
+	parsed, err := mail.ParseAddress(text)
+
+	return err == nil && parsed.Address == text
 }
 
 // checkTools returns an error for extra tools that the role can't have: only the orchestrator gets

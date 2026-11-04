@@ -80,3 +80,14 @@ func userConfigDir() (string, error) {
 
 	return dir, nil
 }
+
+// configFile returns the path of the config file, which an error can name, or a name for it where
+// the user's config folder is unknown.
+func configFile() string {
+	file := "baton's config file"
+	if configDir, err := os.UserConfigDir(); err == nil {
+		file = config.File(configDir)
+	}
+
+	return file
+}

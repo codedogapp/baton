@@ -45,6 +45,17 @@ type Settings struct {
 	// before each handover that it guards. baton has none of its own, and a feature can't start
 	// without one (decision 56).
 	Gate string `json:"gate"`
+	// Jira is the Jira site that baton jira reads tickets from (decision 60).
+	Jira Jira `json:"jira"`
+}
+
+// Jira is a Jira Cloud site, and the user's account there, whose API token the login keychain
+// holds (decision 60).
+type Jira struct {
+	// Site is the site's host name, such as example.atlassian.net.
+	Site string `json:"site"`
+	// Email is the user's email address at Atlassian, which names their account.
+	Email string `json:"email"`
 }
 
 // PlanApprovalOn reports whether the user approves each feature start in the orchestrator's pane.
@@ -144,7 +155,13 @@ func (s Settings) with(layer Settings) Settings {
 		BranchPrefix: cmp.Or(layer.BranchPrefix, s.BranchPrefix),
 		PlanApproval: cmp.Or(layer.PlanApproval, s.PlanApproval),
 		Gate:         cmp.Or(layer.Gate, s.Gate),
+		Jira:         s.Jira.with(layer.Jira),
 	}
+}
+
+// with returns the Jira settings with the layer over them.
+func (j Jira) with(layer Jira) Jira {
+	return Jira{Site: cmp.Or(layer.Site, j.Site), Email: cmp.Or(layer.Email, j.Email)}
 }
 
 // with returns the role's settings with the layer over them.

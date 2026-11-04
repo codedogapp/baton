@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/codedogapp/baton/internal/config"
 	"github.com/codedogapp/baton/internal/flow"
@@ -77,11 +76,6 @@ func gatedSettings(ctx context.Context, dir string) (config.Settings, error) {
 
 // noGate returns the error for a repo without a gate, which names the config file where it goes.
 func noGate() error {
-	file := "baton's config file"
-	if configDir, err := os.UserConfigDir(); err == nil {
-		file = config.File(configDir)
-	}
-
 	return fmt.Errorf(`no gate for this repo: set "gate" in %s to the command that checks `+
-		`the repo's code, such as "mise run check", or to "true" for none`, file)
+		`the repo's code, such as "mise run check", or to "true" for none`, configFile())
 }
