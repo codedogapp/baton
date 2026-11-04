@@ -22,6 +22,7 @@ func TestLoadGivesBatonsOwnWithoutSettings(t *testing.T) {
 		"without the file":       withFolder(t),
 		"with no settings":       withFile(t, `{}`),
 		"with empty sections":    withFile(t, `{"roles": {}, "repos": {"`+repo+`": {}}}`),
+		"with an empty gate":     withFile(t, `{"gate": ""}`),
 	} {
 		t.Run(name, func(t *testing.T) {
 			got, err := config.Load(dir, remote)
@@ -40,6 +41,7 @@ func TestLoadLaysTheFileOverBatonsOwn(t *testing.T) {
 	got := load(t, `{
 		"roundCap": 2,
 		"branchPrefix": "team/",
+		"gate": "mise run check",
 		"roles": {
 			"lead": {"model": "", "reasoningEffort": "high"},
 			"qa": {"model": "claude-sonnet-5.5", "maxAiCredits": 42.5},
@@ -50,6 +52,7 @@ func TestLoadLaysTheFileOverBatonsOwn(t *testing.T) {
 	want := own()
 	want.RoundCap = 2
 	want.BranchPrefix = "team/"
+	want.Gate = "mise run check"
 	want.Roles[flow.RoleLead] = config.Role{Model: model, ReasoningEffort: "high"}
 	want.Roles[flow.RoleQA] = config.Role{Model: "claude-sonnet-5.5", MaxAICredits: 42.5}
 	want.Roles[flow.RoleOrchestrator] = config.Role{Model: model, ExtraTools: []string{}}
@@ -63,6 +66,7 @@ func TestLoadLaysTheRepoOverTheFile(t *testing.T) {
 	const content = `{
 		"roundCap": 2,
 		"branchPrefix": "team/",
+		"gate": "mise run check",
 		"roles": {
 			"lead": {"model": "claude-sonnet-5.5", "reasoningEffort": "high"},
 			"engineer": {"maxAiCredits": 30},
@@ -73,6 +77,7 @@ func TestLoadLaysTheRepoOverTheFile(t *testing.T) {
 			"` + repo + `": {
 				"roundCap": 4,
 				"branchPrefix": "baton/",
+				"gate": "make check",
 				"roles": {
 					"lead": {"model": "gpt-6-sol", "reasoningEffort": "low"},
 					"engineer": {"model": "gpt-6-sol", "maxAiCredits": 0},
@@ -87,6 +92,7 @@ func TestLoadLaysTheRepoOverTheFile(t *testing.T) {
 	file := own()
 	file.RoundCap = 2
 	file.BranchPrefix = "team/"
+	file.Gate = "mise run check"
 	file.Roles[flow.RoleLead] = config.Role{Model: "claude-sonnet-5.5", ReasoningEffort: "high"}
 	file.Roles[flow.RoleEngineer] = config.Role{Model: model, MaxAICredits: 30}
 	file.Roles[flow.RoleQA] = config.Role{Model: model, MaxAICredits: 42.5}
@@ -95,6 +101,7 @@ func TestLoadLaysTheRepoOverTheFile(t *testing.T) {
 	repoOwn := own()
 	repoOwn.RoundCap = 4
 	repoOwn.BranchPrefix = "baton/"
+	repoOwn.Gate = "make check"
 	repoOwn.Roles[flow.RoleLead] = config.Role{Model: "gpt-6-sol", ReasoningEffort: "low"}
 	repoOwn.Roles[flow.RoleEngineer] = config.Role{Model: "gpt-6-sol", MaxAICredits: 30}
 	repoOwn.Roles[flow.RoleQA] = config.Role{Model: model, MaxAICredits: 200}

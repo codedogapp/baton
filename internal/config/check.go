@@ -43,8 +43,12 @@ func check(top Settings, repos map[string]Settings) error {
 // check returns an error for the first setting that baton can't use, with the roles in the order
 // of their names.
 func (s Settings) check() error {
-	if s.RoundCap < 0 {
+	switch {
+	case s.RoundCap < 0:
 		return fmt.Errorf("roundCap %d: want 1 or more", s.RoundCap)
+	case s.Gate != "" && strings.TrimSpace(s.Gate) == "", strings.HasPrefix(s.Gate, "-"):
+		// sh would read a dash at the start as one of its options.
+		return fmt.Errorf("gate %q: want the command that checks the repo's code", s.Gate)
 	}
 
 	for _, role := range slices.Sorted(maps.Keys(s.Roles)) {

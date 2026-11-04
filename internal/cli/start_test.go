@@ -96,6 +96,8 @@ func wantSameRepo(t *testing.T, mainDir, before string) {
 // TestStartFeature starts a feature in the orchestrator's pane, from a linked worktree whose
 // HEAD isn't the main worktree's.
 func TestStartFeature(t *testing.T) {
+	withGate(t, "true")
+
 	mainDir, linked := repos(t)
 	gitIn(t, linked, exec.CommandContext(t.Context(), "git", "commit", "--quiet", "--allow-empty",
 		"--message", "Not the base"))
@@ -151,6 +153,8 @@ func TestStartFeature(t *testing.T) {
 // TestStartFeatureNamesItsPartsAfterTheRepo starts a feature outside any pane, in a repo whose
 // name holds a dot, which a tmux session's name can't hold.
 func TestStartFeatureNamesItsPartsAfterTheRepo(t *testing.T) {
+	withGate(t, "true")
+
 	mainDir := repoNamed(t, "my.repo")
 	brief := write(t, t.TempDir(), "brief.md", "Build the demo.\n")
 

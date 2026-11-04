@@ -50,6 +50,7 @@ type Event struct {
 	Verdict flow.Verdict `json:"verdict,omitzero"`
 	Note    string       `json:"note,omitzero"`  // The name of the note in the notes folder.
 	Text    string       `json:"text,omitempty"` // The question, or the answer.
+	Gate    string       `json:"gate,omitempty"` // The gate that passed before the handover.
 	Flow    flow.State   `json:"flow"`           // Where the feature stands after the event.
 }
 

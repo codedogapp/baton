@@ -19,6 +19,8 @@ const noneRuns = "baton wait: no feature is running, so no work can come to the 
 // then pick up, in the order of their slugs, the work of one that the lead reports ready and of
 // one that the reviewer escalates. The third runs on, so the next wait waits for it.
 func TestOrchestratorPicksUpItsWorkInAnyFeature(t *testing.T) {
+	withGate(t, "true")
+
 	synctest.Test(t, func(t *testing.T) {
 		mainDir, linked := repos(t)
 		store := started(t, mainDir, flow.State{
@@ -80,7 +82,7 @@ func TestOrchestratorPicksUpItsWorkInAnyFeature(t *testing.T) {
 
 		wantJournal(t, store, []logged{
 			{"start orchestrator  01-orchestrator-to-lead.md", "Build the demo.\n"},
-			{"handover lead  02-lead-to-orchestrator.md", "From the lead.\n"},
+			{"handover lead  02-lead-to-orchestrator.md (gate: true)", "From the lead.\n"},
 			{"pickup orchestrator  ", ""},
 		})
 	})
@@ -89,6 +91,8 @@ func TestOrchestratorPicksUpItsWorkInAnyFeature(t *testing.T) {
 // TestOrchestratorsWorkGoesToOneWait has two waits of the orchestrator race for the work of the
 // one feature. The other wait then refuses, since no feature runs.
 func TestOrchestratorsWorkGoesToOneWait(t *testing.T) {
+	withGate(t, "true")
+
 	synctest.Test(t, func(t *testing.T) {
 		mainDir, linked := repos(t)
 		store := started(t, mainDir, flow.State{
@@ -121,10 +125,13 @@ func TestOrchestratorsWorkGoesToOneWait(t *testing.T) {
 // and a ready one to the lead with a new brief, which starts the rounds again. The next role picks
 // up the orchestrator's note.
 func TestOrchestratorHandsFeaturesBack(t *testing.T) {
+	withGate(t, "true")
+
 	cases := []struct {
 		name    string
 		now     flow.State   // Where the feature stands before the handover to the orchestrator.
 		verdict flow.Verdict // The verdict in that handover, if any.
+		gate    string       // What the journal logs of the gate that the handover ran, if any.
 		to      flow.Role
 		handed  string // What the handover prints, after "Handed demo-1 over to ".
 		picked  string // What the next role's wait prints, after "Picked up demo-1 as ".
@@ -133,6 +140,7 @@ func TestOrchestratorHandsFeaturesBack(t *testing.T) {
 			"an escalated feature to the engineer",
 			flow.State{Holder: flow.RoleReviewer, Status: flow.StatusRunning, Round: 3, Cap: 3},
 			flow.VerdictReject,
+			"",
 			flow.RoleEngineer,
 			"engineer: running, round 4 of 4.",
 			"engineer: round 4 of 4, from orchestrator.",
@@ -141,6 +149,7 @@ func TestOrchestratorHandsFeaturesBack(t *testing.T) {
 			"a ready feature to the lead",
 			flow.State{Holder: flow.RoleLead, Status: flow.StatusRunning, Round: 2, Cap: 3},
 			flow.VerdictNone,
+			" (gate: true)",
 			flow.RoleLead,
 			"lead: running, round 0 of 3.",
 			"lead: round 0 of 3, from orchestrator.",
@@ -172,7 +181,7 @@ func TestOrchestratorHandsFeaturesBack(t *testing.T) {
 					},
 					{
 						"handover " + holder + " " + string(test.verdict) + " 02-" + holder +
-							"-to-orchestrator.md",
+							"-to-orchestrator.md" + test.gate,
 						"From the " + holder + ".\n",
 					},
 					{"handover orchestrator  " + note, "The user's word.\n"},

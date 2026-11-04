@@ -84,6 +84,12 @@ func TestStartFeatureRefuses(t *testing.T) {
 			want:  "config file " + configPath(t) + ": roundCap -1: want 1 or more\n",
 		},
 		{
+			name:  "without a gate",
+			args:  []string{"demo-2", "--brief", "brief.md"},
+			setup: func(t *testing.T) { writeConfig(t, `{"roundCap": 2}`) },
+			want:  noGate(t),
+		},
+		{
 			name: "with a bad slug", args: []string{"Demo-2", "--brief", "brief.md"},
 			want: "slug \"Demo-2\": want words of lowercase letters and digits joined by " +
 				"hyphens, such as demo-1\n",
@@ -98,6 +104,8 @@ func TestStartFeatureRefuses(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
+			writeConfig(t, `{"gate": "true"}`)
+
 			if test.setup != nil {
 				test.setup(t)
 			}

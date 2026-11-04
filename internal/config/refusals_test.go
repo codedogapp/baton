@@ -10,7 +10,12 @@ import (
 
 func TestLoadRefusesSettingsThatBatonCantUse(t *testing.T) {
 	for content, want := range map[string]string{
-		`{"roundCap": -1}`:                         "roundCap -1: want 1 or more",
+		`{"roundCap": -1}`:    "roundCap -1: want 1 or more",
+		`{"gate": " "}`:       `gate " ": want the command that checks the repo's code`,
+		`{"gate": "\t\n"}`:    `gate "\t\n": want the command that checks the repo's code`,
+		`{"gate": "-c true"}`: `gate "-c true": want the command that checks the repo's code`,
+		`{"repos": {"github.com/a/a": {"gate": "--version"}}}`: "repos: github.com/a/a: " +
+			`gate "--version": want the command that checks the repo's code`,
 		`{"roles": {"boss": {}}}`:                  "roles: boss: want lead, engineer, qa, reviewer or orchestrator",
 		`{"roles": {"lead": {"model": "--yolo"}}}`: `roles: lead: model "--yolo": want a model's name`,
 		`{"roles": {"qa": {"reasoningEffort": "extreme"}}}`: `roles: qa: reasoningEffort "extreme": ` +

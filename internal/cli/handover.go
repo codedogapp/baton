@@ -15,7 +15,8 @@ import (
 
 // handover hands a feature over from the pane's role to the next one, with a note: the next role's
 // work. QA and the reviewer give their verdict. The orchestrator, whose pane names no feature,
-// names the feature and the next role (decision 44).
+// names the feature and the next role (decision 44). The engineer's handover, QA's approval and
+// the lead's final report wait for the repo's gate to pass (decision 56).
 func handover(ctx context.Context, env Env, args []string) error {
 	flags := newFlags(env, "handover")
 	notePath := flags.String("note", "", "the `file` with the note for the next role (required)")
@@ -52,7 +53,7 @@ func handover(ctx context.Context, env Env, args []string) error {
 		Note:  note,
 	}
 
-	feature, err := store.Update(slug, entry, moved(move))
+	feature, err := handing{store: store, slug: slug, move: move, entry: entry}.make(ctx, env)
 	if err != nil {
 		return err
 	}

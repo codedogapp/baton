@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/codedogapp/baton/internal/config"
 )
 
 // asBaton is the variable that has this test binary run baton's main in place of the tests. The
@@ -64,8 +67,10 @@ func TestMain(m *testing.M) {
 // (testdata/copilot). The test, as the orchestrator, starts the feature with its brief, and its
 // panes run this baton. The lead briefs the engineer, the engineer adds demo.txt, QA and the
 // reviewer approve it, and the lead commits it and hands the final report to the orchestrator,
-// whose baton wait picks it up. Each stand-in runs the plugin's stop hook at the end of its turns:
-// the hook sends it back to work before its handover, and lets it stop once its baton wait waits.
+// whose baton wait picks it up. The engineer's handover, QA's approval and the lead's final report
+// run the gate in the feature's worktree. Each stand-in runs the plugin's stop hook at the end of
+// its turns: the hook sends it back to work before its handover, and lets it stop once its baton
+// wait waits.
 func TestSkeleton(t *testing.T) {
 	root := skeleton(t)
 	feature := filepath.Join(root, "repo", ".git", "baton", "features", "demo-1")
@@ -93,13 +98,16 @@ func TestSkeleton(t *testing.T) {
 		{"pickup lead  ", ""},
 		{"handover lead  02-lead-to-engineer.md", "Step brief: add demo.txt.\n"},
 		{"pickup engineer  ", ""},
-		{"handover engineer  03-engineer-to-qa.md", "Added demo.txt.\n"},
+		{"handover engineer  03-engineer-to-qa.md (gate: " + gate + ")", "Added demo.txt.\n"},
 		{"pickup qa  ", ""},
-		{"handover qa approve 04-qa-to-reviewer.md", "Checked demo.txt.\n"},
+		{"handover qa approve 04-qa-to-reviewer.md (gate: " + gate + ")", "Checked demo.txt.\n"},
 		{"pickup reviewer  ", ""},
 		{"handover reviewer approve 05-reviewer-to-lead.md", "Reviewed demo.txt.\n"},
 		{"pickup lead  ", ""},
-		{"handover lead  06-lead-to-orchestrator.md", "Final report: committed demo.txt.\n"},
+		{
+			"handover lead  06-lead-to-orchestrator.md (gate: " + gate + ")",
+			"Final report: committed demo.txt.\n",
+		},
 		{"pickup orchestrator  ", ""},
 	})
 	wantFile(t, filepath.Join(root, "copilot.log"),
@@ -107,14 +115,17 @@ func TestSkeleton(t *testing.T) {
 			"baton:lead 1 stop: block\n"+
 			"baton:engineer 1: Picked up demo-1 as engineer: round 1 of 3, from lead.\n"+
 			"baton:engineer 1 stop: block\n"+
+			"gate engineer in repo-demo-1\n"+
 			"baton:qa 1: Picked up demo-1 as qa: round 1 of 3, from engineer.\n"+
 			"baton:qa 1 stop: block\n"+
+			"gate qa in repo-demo-1\n"+
 			"baton:reviewer 1: Picked up demo-1 as reviewer: round 1 of 3, from qa, "+
 			"verdict approve.\n"+
 			"baton:reviewer 1 stop: block\n"+
 			"baton:lead 2: Picked up demo-1 as lead: round 1 of 3, from reviewer, "+
 			"verdict approve.\n"+
-			"baton:lead 2 stop: block\n")
+			"baton:lead 2 stop: block\n"+
+			"gate lead in repo-demo-1\n")
 
 	wantOut(t, exec.CommandContext(t.Context(), "git", "log", "--format=%s",
 		"main..feature/demo-1"), "Add demo.txt\n")
@@ -122,4 +133,31 @@ func TestSkeleton(t *testing.T) {
 		"Demo.\n")
 	wantOut(t, exec.CommandContext(t.Context(), "git", "-C", "../repo-demo-1", "status",
 		"--porcelain"), "")
+}
+
+// gate is the gate in the skeleton's config file: it checks that demo.txt is there, and logs the
+// role whose handover runs it, and the folder where it runs.
+const gate = `test -f demo.txt && printf 'gate %s in %s\n' "$BATON_ROLE" "${PWD##*/}" >>"$SKELETON_LOG"`
+
+// configure writes baton's config file, with the gate, in the user's config folder.
+func configure(t *testing.T) {
+	t.Helper()
+
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text, err := json.Marshal(map[string]string{"gate": gate})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.MkdirAll(config.Folder(dir), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(config.File(dir), text, 0o600); err != nil {
+		t.Fatal(err)
+	}
 }

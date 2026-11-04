@@ -41,6 +41,10 @@ type Settings struct {
 	// PlanApproval makes the user approve each feature start in the orchestrator's pane (decision
 	// 8). A nil one keeps the one below it, so that false can turn it off.
 	PlanApproval *bool `json:"planApproval"`
+	// Gate is the command that checks the repo's code: /bin/sh runs it in the feature's worktree
+	// before each handover that it guards. baton has none of its own, and a feature can't start
+	// without one (decision 56).
+	Gate string `json:"gate"`
 }
 
 // PlanApprovalOn reports whether the user approves each feature start in the orchestrator's pane.
@@ -79,11 +83,21 @@ func defaults() Settings {
 	}
 }
 
+// Folder returns baton's folder in the user's config folder, which holds the config file.
+func Folder(configDir string) string {
+	return filepath.Join(configDir, folder)
+}
+
+// File returns the path of the config file in the user's config folder.
+func File(configDir string) string {
+	return filepath.Join(Folder(configDir), file)
+}
+
 // Load reads the config file in the user's config folder, and returns the settings for the repo
 // whose remote has the URL. A missing file gives baton's own. It checks the whole file, the other
 // repos' sections too, so that a mistake shows at once.
 func Load(configDir, remote string) (Settings, error) {
-	path := filepath.Join(configDir, folder, file)
+	path := File(configDir)
 
 	data, err := os.ReadFile(filepath.Clean(path))
 	if errors.Is(err, fs.ErrNotExist) {
@@ -129,6 +143,7 @@ func (s Settings) with(layer Settings) Settings {
 		RoundCap:     cmp.Or(layer.RoundCap, s.RoundCap),
 		BranchPrefix: cmp.Or(layer.BranchPrefix, s.BranchPrefix),
 		PlanApproval: cmp.Or(layer.PlanApproval, s.PlanApproval),
+		Gate:         cmp.Or(layer.Gate, s.Gate),
 	}
 }
 

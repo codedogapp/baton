@@ -174,3 +174,36 @@ func TestNextFollowsTheFlow(t *testing.T) {
 func state(holder flow.Role, status flow.Status, round, extra int) flow.State {
 	return flow.State{Holder: holder, Status: status, Round: round, Cap: 3, Extra: extra}
 }
+
+// TestGatedNamesTheHandoversThatVouchForTheCode checks the state after each handover: the
+// engineer's, QA's approval and the lead's final report wait for the repo's gate, and no other.
+func TestGatedNamesTheHandoversThatVouchForTheCode(t *testing.T) {
+	extra := append(escalated(), "orchestrator to engineer")
+
+	tests := []struct {
+		name  string
+		names []string
+		want  bool
+	}{
+		{"the start", nil, false},
+		{"the lead's brief", approved()[:1], false},
+		{"the engineer's handover", approved()[:2], true},
+		{"QA's approval", approved()[:3], true},
+		{"QA's rejection", escalated()[:3], false},
+		{"the reviewer's approval", approved(), false},
+		{"the reviewer's rejection", escalated()[:6], false},
+		{"the lead's final report", append(approved(), "lead"), true},
+		{"an escalation", escalated(), false},
+		{"the orchestrator's extra round", extra, false},
+		{"the engineer's handover in the extra round", append(extra, "engineer"), true},
+		{"the orchestrator's new brief", append(approved(), "lead", "orchestrator to lead"), false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := walk(t, 3, test.names...).Gated(); got != test.want {
+				t.Errorf("after %q: Gated() = %t, want %t", test.names, got, test.want)
+			}
+		})
+	}
+}

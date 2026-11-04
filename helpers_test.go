@@ -18,9 +18,10 @@ import (
 
 // skeleton makes the skeleton test's world, and returns its folder. The folder holds a bin folder,
 // first on the PATH, with baton, a link to this test binary, and copilot, a link to the stand-in;
-// a home folder and a temp folder of the test's own; the repo, with a commit, which is the test's
-// working folder; and the orchestrator's brief. baton's tmux finds the test's own server, as tmux's
-// default server, in a TMUX_TMPDIR of the test's own.
+// a home folder of the test's own, with baton's config file, which gives the gate; a temp folder of
+// the test's own; the repo, with a commit, which is the test's working folder; and the
+// orchestrator's brief. baton's tmux finds the test's own server, as tmux's default server, in a
+// TMUX_TMPDIR of the test's own.
 func skeleton(t *testing.T) string {
 	t.Helper()
 
@@ -65,6 +66,8 @@ func skeleton(t *testing.T) string {
 	// macOS limits a socket's path to 104 bytes, and $TMPDIR there leaves too few of them.
 	t.Setenv("TMUX_TMPDIR", folder(t, "/tmp", "baton-test-skeleton-"))
 	t.Chdir(repo)
+
+	configure(t)
 
 	serve(t)
 	ran(t, exec.CommandContext(t.Context(), "git", "init", "--quiet", "--initial-branch=main"))
@@ -257,10 +260,12 @@ func wantJournal(t *testing.T, feature string, want []logged) {
 			}
 		}
 
-		got = append(got, logged{
-			event: fmt.Sprintf("%s %s %s %s", event.Kind, event.Role, event.Verdict, event.Note),
-			note:  string(note),
-		})
+		line := fmt.Sprintf("%s %s %s %s", event.Kind, event.Role, event.Verdict, event.Note)
+		if event.Gate != "" {
+			line += " (gate: " + event.Gate + ")"
+		}
+
+		got = append(got, logged{event: line, note: string(note)})
 	}
 
 	if !slices.Equal(got, want) {

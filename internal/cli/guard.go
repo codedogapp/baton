@@ -10,8 +10,10 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/codedogapp/baton/internal/config"
 	"github.com/codedogapp/baton/internal/flow"
 	"github.com/codedogapp/baton/internal/guard"
+	"github.com/codedogapp/baton/internal/state"
 )
 
 // stopped starts each reason that baton hook guard gives for a tool that it denies, which copilot
@@ -195,15 +197,22 @@ func roleCommand(command guard.Command) guardOutput {
 }
 
 // pathReason returns the reason to deny a file tool's write of the absolute path in a role's pane,
-// or "" to let it run: a file in baton's folder, which only baton writes (decision 48), or in
-// baton's cache folder, whose plugin runs this guard (decision 53).
+// or "" to let it run: a file in baton's folder, which only baton writes (decision 48), in baton's
+// cache folder, whose plugin runs this guard (decision 53), or in baton's config folder, whose file
+// holds the repo's gate (decision 56).
 func pathReason(ctx context.Context, dir, path string) (string, error) {
 	cache, err := batonCache()
-	if err != nil {
-		return "", err
+
+	var configDir string
+	if err == nil {
+		configDir, err = userConfigDir()
 	}
 
-	store, err := openStore(ctx, dir)
+	var store state.Store
+	if err == nil {
+		store, err = openStore(ctx, dir)
+	}
+
 	if err != nil {
 		return "", err
 	}
@@ -215,6 +224,10 @@ func pathReason(ctx context.Context, dir, path string) (string, error) {
 	case within(path, cache):
 		return fmt.Sprintf("%s%s is in baton's cache folder %s, which only baton writes: it "+
 			"holds the plugin whose hook runs this guard.", stopped, path, cache), nil
+	case within(path, config.Folder(configDir)):
+		return fmt.Sprintf("%s%s is in baton's config folder %s, which only the user writes: "+
+			"its file holds the gate that your handovers run.", stopped, path,
+			config.Folder(configDir)), nil
 	}
 
 	return "", nil

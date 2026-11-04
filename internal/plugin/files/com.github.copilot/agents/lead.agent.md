@@ -14,7 +14,7 @@ baton hands you each piece of work as a note. Your first prompt names it; after 
 
 ## Handing over
 
-When your part is done, write your note for the next role in a new file in your session's `files/` folder: never in the worktree, where it could get committed, or in baton's folder. Then run `baton handover --note <file>`: baton checks the move, keeps a copy of the note and picks who works next. If it refuses, fix what it names and run it again.
+When your part is done, write your note for the next role in a new file in your session's `files/` folder: never in the worktree, where it could get committed, or in baton's folder. Then run `baton handover --note <file>`: baton checks the move, keeps a copy of the note and picks who works next. Before your final report, it runs the repo's gate (the user's command that checks the code) in the feature's worktree, and refuses while the gate fails. The gate can take minutes: let the handover end, and read what it printed. If the gate fails, fix what broke and commit the fix, or ask the orchestrator when the fix isn't yours to make. If baton refuses for another reason, fix what it names and run it again.
 
 Then start `baton wait` with the bash tool in async mode, and end your turn. It ends when your next work comes, and its end wakes you: read what it printed, and carry on. Never run it in sync mode, and never end a turn without it running.
 

@@ -88,6 +88,7 @@ func TestPaneGivesTheOrchestratorItsSettings(t *testing.T) {
 func TestStartFeatureTakesItsSettings(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	writeConfig(t, `{
+		"gate": "true",
 		"roundCap": 5,
 		"repos": {"github.com/codedogapp/demo": {"branchPrefix": "team/"}}
 	}`)

@@ -54,7 +54,8 @@ func startFeature(ctx context.Context, env Env, args []string) error {
 
 // newLaunch returns where the feature's parts go: its state in the repo's baton folder, and its
 // worktree next to the repo's main worktree, with names after the main worktree's folder
-// (decision 41). The config file gives its round cap and its branch's prefix (decision 49).
+// (decision 41). The config file gives its round cap and its branch's prefix (decision 49), and
+// must give the repo's gate, which the feature's handovers run (decision 56).
 func newLaunch(ctx context.Context, env Env, slug string) (launch, error) {
 	self, err := env.Executable()
 	if err != nil {
@@ -72,7 +73,7 @@ func newLaunch(ctx context.Context, env Env, slug string) (launch, error) {
 
 	var settings config.Settings
 	if err == nil {
-		settings, err = loadSettings(ctx, mainDir)
+		settings, err = gatedSettings(ctx, mainDir)
 	}
 
 	if err != nil {

@@ -38,6 +38,8 @@ const (
 // waits for it, and may stop once it holds every feature with its work picked up, since those
 // wait on the user. The hook changes nothing in baton's folder.
 func TestStopHookSendsBackACopilotThatStopsTooSoon(t *testing.T) {
+	withGate(t, "true")
+
 	ready := flow.State{Holder: flow.RoleLead, Status: flow.StatusRunning, Round: 2, Cap: 3}
 	leadPicks := func(t *testing.T, _ state.Store, linked string) { waitAs(t, linked, flow.RoleLead) }
 	leadAsks := func(t *testing.T, _ state.Store, linked string) {
