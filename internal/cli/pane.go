@@ -31,9 +31,10 @@ const envBin = "BATON_BIN"
 // pane becomes the pane's copilot, with the role's settings from the config file (decision 49).
 // The orchestrator's copilot starts at once, since the user talks to it. A role's pane waits for
 // the role's first work, then becomes the role's copilot, with that work as its first prompt
-// (decision 38). It finds copilot, writes the plugin and reads the settings before it waits, so
-// that a pane that can't start copilot never picks up work that nobody would then do. After the
-// wait it checks the plugin again, which a role may have changed meanwhile (decision 53).
+// (decision 38), and with the belt in its environment (decision 55). It finds copilot, writes the
+// plugin, reads the settings and makes the belt before it waits, so that a pane that can't start
+// copilot never picks up work that nobody would then do. After the wait it checks the plugin
+// again, which a role may have changed meanwhile (decision 53).
 func pane(ctx context.Context, env Env, args []string) error {
 	if err := parse(newFlags(env, "pane"), args); err != nil {
 		return err
@@ -64,6 +65,11 @@ func pane(ctx context.Context, env Env, args []string) error {
 		return becomeCopilot(env, program, orchestrating(dir, own), environment(bin))
 	}
 
+	vars, err := belted(ctx, env.Dir, bin, allowAll+"=true")
+	if err != nil {
+		return err
+	}
+
 	work, err := waitForWork(ctx, env, role, slug)
 	if err != nil {
 		return err
@@ -73,8 +79,7 @@ func pane(ctx context.Context, env Env, args []string) error {
 		return err
 	}
 
-	return becomeCopilot(env, program, command(role, dir, own, work),
-		environment(bin, allowAll+"=true"))
+	return becomeCopilot(env, program, command(role, dir, own, work), vars)
 }
 
 // waitForWork says that the role waits, waits for the role's work in the feature, then picks it

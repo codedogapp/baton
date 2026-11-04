@@ -71,6 +71,7 @@ func TestPaneWaitsForTheRolesWork(t *testing.T) {
 		go func() { engineer <- paneFor(t, env) }()
 
 		time.Sleep(time.Minute)
+		stillWaiting(t, engineer)
 
 		if _, err := io.WriteString(user, "Are you there?\n"); err != nil {
 			t.Fatal(err)
@@ -81,13 +82,7 @@ func TestPaneWaitsForTheRolesWork(t *testing.T) {
 		}
 
 		time.Sleep(time.Minute)
-		synctest.Wait()
-
-		select {
-		case got := <-engineer:
-			t.Fatalf("the engineer's pane ended before its work came: %+v", got)
-		default:
-		}
+		stillWaiting(t, engineer)
 
 		handOver(t, mainDir, flow.RoleLead, flow.VerdictNone)
 
@@ -110,12 +105,17 @@ func TestPaneWaitsForTheRolesWork(t *testing.T) {
 
 // TestPaneBecomesTheOrchestratorsCopilot has the orchestrator's pane write the plugin and become
 // the orchestrator's copilot at once, with no work to wait for and no first prompt, since the user
-// speaks first, and with copilot's own prompts: the user's environment as it is, but for BATON_BIN,
-// which names this baton for the stop hook (decisions 45 and 47).
+// speaks first, and with copilot's own prompts: the user's environment as it is, with no belt, so
+// with the user's GitHub token and git's settings, but for BATON_BIN, which names this baton for
+// the stop hook (decisions 45, 47 and 55).
 func TestPaneBecomesTheOrchestratorsCopilot(t *testing.T) {
 	copilot, cache := standIn(t)
 	t.Setenv("COPILOT_ALLOW_ALL", "1")
 	t.Setenv("BATON_BIN", "/usr/local/bin/baton")
+	t.Setenv("GH_TOKEN", "gh-token")
+	t.Setenv("GIT_CONFIG_COUNT", "1")
+	t.Setenv("GIT_CONFIG_KEY_0", "user.name")
+	t.Setenv("GIT_CONFIG_VALUE_0", "user")
 
 	mainDir, _ := repos(t)
 	env, _ := inPane(t, mainDir, orchestratorPane())
@@ -185,6 +185,19 @@ func paneFor(t *testing.T, env cli.Env) ran {
 	return runExec(ctx, env, nil)
 }
 
+// stillWaiting fails the test if the engineer's pane has ended, once every other goroutine in the
+// bubble is blocked, before the test writes to a terminal that nobody reads any more.
+func stillWaiting(t *testing.T, engineer <-chan ran) {
+	t.Helper()
+	synctest.Wait()
+
+	select {
+	case got := <-engineer:
+		t.Fatalf("the engineer's pane ended before its work came: %+v", got)
+	default:
+	}
+}
+
 // copilotLine returns the role's copilot command line, with the plugin's folder and the role's
 // work as its first prompt (decisions 7, 9 to 11 and 38).
 func copilotLine(role flow.Role, plugin, work string) []string {
@@ -197,13 +210,31 @@ func copilotLine(role flow.Role, plugin, work string) []string {
 	}
 }
 
-// copilotEnv returns the environment that a role's copilot gets: baton's, with BATON_BIN naming
-// this baton, for the stop hook, and COPILOT_ALLOW_ALL=true, which trusts copilot's folder, each in
-// place of the user's own value, since copilot reads the first of two (fact 9, decisions 39 and
-// 47).
-func copilotEnv() []string {
-	return append(withoutVars("BATON_BIN", "COPILOT_ALLOW_ALL"), "BATON_BIN="+self,
-		"COPILOT_ALLOW_ALL=true")
+// copilotEnv returns the environment that a role's copilot gets in a repo whose remotes need the
+// push rules, with none of git's settings in baton's environment (decision 55).
+func copilotEnv(rules ...[2]string) []string {
+	return roleEnv(belt(0, rules...)...)
+}
+
+// roleEnv returns the environment that a role's copilot gets, with the variables: baton's, without
+// its GitHub tokens, with BATON_BIN naming this baton, for the stop hook,
+// COPILOT_ALLOW_ALL=true, which trusts copilot's folder, and the variables, each in place of the
+// user's own value, since copilot reads the first of two (fact 9, decisions 39, 47 and 55).
+func roleEnv(vars ...string) []string {
+	vars = append([]string{"BATON_BIN=" + self, "COPILOT_ALLOW_ALL=true"}, vars...)
+
+	return append(withoutVars(slices.Concat(names(vars), githubTokens)...), vars...)
+}
+
+// names returns the variables' names.
+func names(vars []string) []string {
+	names := make([]string, 0, len(vars))
+	for _, variable := range vars {
+		name, _, _ := strings.Cut(variable, "=")
+		names = append(names, name)
+	}
+
+	return names
 }
 
 // withoutVars returns baton's environment without the variables with the names.

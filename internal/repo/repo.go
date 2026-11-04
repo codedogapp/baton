@@ -1,5 +1,5 @@
-// Package repo runs git for baton: it finds the repo that baton works in, and the repo's origin
-// remote, and makes a feature's branch and worktree.
+// Package repo runs git for baton: it finds the repo that baton works in, the repo's origin remote
+// and its remotes' URLs, and git's version, and makes a feature's branch and worktree.
 package repo
 
 import (

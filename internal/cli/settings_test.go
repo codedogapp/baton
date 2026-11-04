@@ -16,7 +16,8 @@ import (
 // repo an origin remote, whose URL picks the repo's section in the file (decision 49).
 
 // TestPaneGivesTheRoleItsSettings has the lead's pane become the lead's copilot with the lead's
-// settings: those for every repo, under those of the repo's section, but not another repo's.
+// settings: those for every repo, under those of the repo's section, but not another repo's. Its
+// belt blocks pushes to the origin remote's URL (decision 55).
 func TestPaneGivesTheRoleItsSettings(t *testing.T) {
 	copilot, cache := standIn(t)
 	writeConfig(t, `{
@@ -46,7 +47,7 @@ func TestPaneGivesTheRoleItsSettings(t *testing.T) {
 				"-i", "Picked up demo-1 as lead: round 0 of 3, from orchestrator.\nNote: " +
 					notePath(store, "01-orchestrator-to-lead.md") + "\n",
 			},
-			env: copilotEnv(),
+			env: copilotEnv(pushRule("https://github.com/codedogapp/demo.git")),
 		})
 	})
 }
