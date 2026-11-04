@@ -79,7 +79,7 @@ func TestPaneGivesTheOrchestratorItsSettings(t *testing.T) {
 			"--available-tools", "bash", "read_bash", "stop_bash", "list_bash", "view", "create",
 			"edit", "grep", "glob", "web_fetch", "ask_user",
 		},
-		env: append(withoutVars("BATON_BIN"), "BATON_BIN="+self),
+		env: orchestratorEnv(),
 	})
 }
 

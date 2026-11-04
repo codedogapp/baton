@@ -28,13 +28,17 @@ const allowAll = "COPILOT_ALLOW_ALL"
 // plugin's hooks, which run baton hook guard and baton hook stop (decisions 47 and 52).
 const envBin = "BATON_BIN"
 
-// pane becomes the pane's copilot, with the role's settings from the config file (decision 49).
-// The orchestrator's copilot starts at once, since the user talks to it. A role's pane waits for
-// the role's first work, then becomes the role's copilot, with that work as its first prompt
-// (decision 38), and with the belt in its environment (decision 55). It finds copilot, writes the
-// plugin, reads the settings and makes the belt before it waits, so that a pane that can't start
-// copilot never picks up work that nobody would then do. After the wait it checks the plugin
-// again, which a role may have changed meanwhile (decision 53).
+// envPath is the variable that lists the folders where a shell looks for a program by its name.
+const envPath = "PATH"
+
+// pane becomes the pane's copilot, with the role's settings from the config file (decision 49),
+// and with the folder of baton's own program first on its PATH (decision 62). The orchestrator's
+// copilot starts at once, since the user talks to it. A role's pane waits for the role's first
+// work, then becomes the role's copilot, with that work as its first prompt (decision 38), and
+// with the belt in its environment (decision 55). It finds copilot, writes the plugin, reads the
+// settings and makes the belt before it waits, so that a pane that can't start copilot never
+// picks up work that nobody would then do. After the wait it checks the plugin again, which a
+// role may have changed meanwhile (decision 53).
 func pane(ctx context.Context, env Env, args []string) error {
 	if err := parse(newFlags(env, "pane"), args); err != nil {
 		return err
@@ -60,12 +64,14 @@ func pane(ctx context.Context, env Env, args []string) error {
 		return err
 	}
 
-	own, bin := settings.Roles[role], envBin+"="+self
+	own := settings.Roles[role]
+
+	vars := []string{envBin + "=" + self, envPath + "=" + findable(self)}
 	if role == flow.RoleOrchestrator {
-		return becomeCopilot(env, program, orchestrating(dir, own), environment(bin))
+		return becomeCopilot(env, program, orchestrating(dir, own), environment(vars...))
 	}
 
-	vars, err := belted(ctx, env.Dir, bin, allowAll+"=true")
+	vars, err = belted(ctx, env.Dir, append(vars, allowAll+"=true")...)
 	if err != nil {
 		return err
 	}
@@ -161,6 +167,36 @@ func batonCache() (string, error) {
 func watch(terminal io.Reader, stop context.CancelCauseFunc) {
 	_, err := io.Copy(io.Discard, terminal)
 	stop(fmt.Errorf("the terminal's input ended: %w", cmp.Or(err, io.EOF)))
+}
+
+// findable returns the PATH for the pane's copilot, so that the agents' baton commands run the
+// pane's baton, as its hooks do: the pane's own PATH, which found copilot, so it isn't empty, with
+// the folder of baton's own program first, unless the PATH finds that program as baton already, or
+// the folder's name holds the separator of a PATH's folders, which no PATH can name (decision 62).
+func findable(self string) string {
+	path, dir := os.Getenv(envPath), filepath.Dir(self)
+	if strings.ContainsRune(dir, filepath.ListSeparator) || finds(self) {
+		return path
+	}
+
+	return dir + string(filepath.ListSeparator) + path
+}
+
+// finds reports whether the PATH finds baton's own program as baton, itself or through a link.
+func finds(self string) bool {
+	want, err := os.Stat(self)
+	if err != nil {
+		return false
+	}
+
+	found, err := exec.LookPath("baton")
+	if err != nil {
+		return false
+	}
+
+	got, err := os.Stat(found)
+
+	return err == nil && os.SameFile(got, want)
 }
 
 // environment returns baton's environment for copilot, with the variables, each one name=value,
