@@ -30,6 +30,9 @@ const (
 	EventPickup   = "pickup"
 	EventQuestion = "question" // The holder asked the orchestrator a question.
 	EventAnswer   = "answer"   // The orchestrator answered it.
+	// EventDeliver means that baton deliver pushed the feature's branch and opened its pull
+	// request, or commented the lead's final report on it.
+	EventDeliver = "deliver"
 )
 
 // Entry is what a change adds to the feature's journal: its event, and the note that came with
@@ -49,7 +52,7 @@ type Event struct {
 	Role    flow.Role    `json:"role"` // The role that acted.
 	Verdict flow.Verdict `json:"verdict,omitzero"`
 	Note    string       `json:"note,omitzero"`  // The name of the note in the notes folder.
-	Text    string       `json:"text,omitempty"` // The question, or the answer.
+	Text    string       `json:"text,omitempty"` // The question, the answer, or the pull request.
 	Gate    string       `json:"gate,omitempty"` // The gate that passed before the handover.
 	Flow    flow.State   `json:"flow"`           // Where the feature stands after the event.
 }

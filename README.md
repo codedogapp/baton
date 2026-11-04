@@ -10,7 +10,7 @@ You talk to one agent, the orchestrator. It reads the ticket, plans the work as 
 
 - macOS, git 2.36 or newer, and tmux 3.5 or newer.
 - [GitHub Copilot CLI](https://docs.github.com/copilot/how-tos/copilot-cli), logged in with `copilot login`, or with a token in `COPILOT_GITHUB_TOKEN`, `GH_TOKEN` or `GITHUB_TOKEN`: `gh` doesn't work in the roles' panes, so their `copilot` can't take its login from `gh`.
-- `gh` for GitHub pull requests; a Bitbucket Cloud API token for Bitbucket pull requests; a read-only Jira API token for Jira tickets.
+- `gh`, logged in with `gh auth login`, for GitHub pull requests; a Bitbucket Cloud API token for Bitbucket pull requests; a read-only Jira API token for Jira tickets.
 
 ## Config
 
@@ -34,6 +34,12 @@ For example, one gate and QA on another model with a cap, for every repo, and tw
 ```
 
 baton checks the whole file each time it reads it, and refuses a file with a mistake, naming the file and the mistake.
+
+## Pull requests
+
+When a feature is ready, the orchestrator reports it to you, with a title for its pull request. On your word, it delivers the feature with `baton deliver <slug> --title "<title>"`, which baton's guard asks you about first; you can run it too. baton pushes the feature's branch to `origin`, with your git, then opens its pull request with your `gh`, into the GitHub repo's default branch, with the lead's final report as its description, as it is: read the report first, at the path that the orchestrator gives, if you want to see what goes out. If you hand the feature back for changes, deliver it again once it's ready, without `--title`: baton pushes the new commits and comments the lead's new report on the same pull request. baton never merges.
+
+gh picks the GitHub repo from the repo's remotes, as `gh pr create` does, so baton doesn't handle a fork with an `upstream` remote yet.
 
 ## Jira
 

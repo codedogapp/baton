@@ -18,6 +18,7 @@ func TestValidateAcceptsExactlyTheStatesOfTheFlow(t *testing.T) {
 		flow.StatusRunning,
 		flow.StatusEscalated,
 		flow.StatusReady,
+		flow.StatusDelivered,
 	}
 
 	states := []flow.State{{}}
@@ -42,8 +43,8 @@ func roles() []flow.Role {
 	}
 }
 
-// madeStates returns the states that Start and Next make, up to the caps and extra rounds given,
-// by trying every handover from every state found.
+// madeStates returns the states that Start, Next and Deliver make, up to the caps and extra
+// rounds given, by trying every handover and the delivery from every state found.
 func madeStates(t *testing.T, maxCap, maxExtra int) map[flow.State]bool {
 	t.Helper()
 
@@ -84,6 +85,10 @@ func madeStates(t *testing.T, maxCap, maxExtra int) map[flow.State]bool {
 			if next, err := state.Next(handover); err == nil {
 				found = append(found, next)
 			}
+		}
+
+		if delivered, err := state.Deliver(); err == nil {
+			found = append(found, delivered)
 		}
 	}
 

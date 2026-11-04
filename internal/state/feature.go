@@ -20,6 +20,9 @@ type Feature struct {
 	Branch string `json:"branch,omitempty"`
 	// Worktree is the absolute path of the feature's worktree, where its roles work.
 	Worktree string `json:"worktree,omitempty"`
+	// PullRequest is the URL of the pull request that baton deliver opened for the feature's
+	// branch, once it has; later deliveries comment on it (decision 61).
+	PullRequest string `json:"pullRequest,omitempty"`
 	// Flow is where the feature stands in the flow.
 	Flow flow.State `json:"flow"`
 	// Work is the holder's work: the last note, since each note goes to the holder after the

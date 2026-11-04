@@ -14,8 +14,10 @@ const (
 	orchestratorAgent = "starts another agent, which the orchestrator never does: start a " +
 		"feature, and its team does the work."
 	orchestratorBaton = "isn't the orchestrator's command: it runs `baton jira`, " +
-		"`baton feature start`, `baton wait`, `baton answer`, `baton handover` and " +
-		"`baton status`."
+		"`baton feature start`, `baton wait`, `baton answer`, `baton handover`, " +
+		"`baton status` and `baton deliver`."
+	toDeliver = guardAsks + "`baton deliver` pushes a feature's branch to origin, then opens " +
+		"its pull request on GitHub or comments on it. Allow it if you want the feature delivered."
 )
 
 // asks returns the guard's question to the user about the orchestrator's outward command, which
@@ -57,6 +59,10 @@ func TestGuardHookAsksTheUserAboutTheOrchestratorsCommands(t *testing.T) {
 		"baton handover demo-1 --to lead":        {},
 		"baton status":                           {},
 		"baton jira DEMO-1":                      {},
+		"baton deliver demo-1 --title 'Add it'":  {"ask", toDeliver},
+		"baton deliver demo-1 && git push":       {"ask", toDeliver},
+		"git push; baton deliver demo-1":         asks("git push"),
+		"baton deliver demo-1; tmux ls":          forbids("tmux", orchestratorControl),
 		"baton help feature":                     {},
 		"baton -h":                               {},
 		"baton -help":                            {},

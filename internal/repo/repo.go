@@ -1,5 +1,6 @@
 // Package repo runs git for baton: it finds the repo that baton works in, the repo's origin remote
-// and its remotes' URLs, and git's version, and makes a feature's branch and worktree.
+// and its remotes' URLs, and git's version, makes a feature's branch and worktree, and pushes the
+// branch.
 package repo
 
 import (
@@ -58,6 +59,17 @@ func Remote(ctx context.Context, dir string) (string, error) {
 	}
 
 	return strings.TrimSuffix(out, "\n"), nil
+}
+
+// Push pushes the branch of the repo that holds the folder to the origin remote, to the branch of
+// the same name there, which it makes the branch's upstream (decision 61).
+func Push(ctx context.Context, dir, branch string) error {
+	_, err := git(ctx, dir, "push", "--set-upstream", "origin", "refs/heads/"+branch)
+	if err != nil {
+		return fmt.Errorf("push %s to origin: %w", branch, err)
+	}
+
+	return nil
 }
 
 // git runs git in the folder and returns what it printed.
