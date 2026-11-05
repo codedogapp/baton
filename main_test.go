@@ -24,8 +24,9 @@ const asBaton = "BATON_TEST_AS_BATON"
 // git and tmux away from the user's: git without the user's config, in the C locale, with a test
 // author, and without the variables that git sets for its hooks, such as GIT_DIR; tmux without
 // TMUX and TMUX_PANE, which name the user's server; and no XDG folders, so that baton's cache and
-// tmux's config are in the test's home folder. It also clears BATON_ROLE and BATON_FEATURE, which
-// name the pane, if a pane of baton's runs the tests.
+// tmux's config are in the test's home folder, and no COPILOT_HOME, so that the stand-in copilot's
+// events are there too. It also clears BATON_ROLE and BATON_FEATURE, which name the pane, if a
+// pane of baton's runs the tests.
 func TestMain(m *testing.M) {
 	if os.Getenv(asBaton) == "1" {
 		main()
@@ -40,7 +41,8 @@ func TestMain(m *testing.M) {
 	}
 
 	for _, name := range []string{
-		"TMUX", "TMUX_PANE", "XDG_CACHE_HOME", "XDG_CONFIG_HOME", "BATON_ROLE", "BATON_FEATURE",
+		"TMUX", "TMUX_PANE", "XDG_CACHE_HOME", "XDG_CONFIG_HOME", "COPILOT_HOME", "BATON_ROLE",
+		"BATON_FEATURE",
 	} {
 		errs = append(errs, os.Unsetenv(name))
 	}
@@ -70,7 +72,8 @@ func TestMain(m *testing.M) {
 // whose baton wait picks it up. The engineer's handover, QA's approval and the lead's final report
 // run the gate in the feature's worktree. Each stand-in runs the plugin's stop hook at the end of
 // its turns: the hook sends it back to work before its handover, and lets it stop once its baton
-// wait waits.
+// wait waits. baton status then shows the AI credits that each role's stand-in logged in the
+// events of the session that its pane gave it.
 func TestSkeleton(t *testing.T) {
 	root := skeleton(t)
 	feature := filepath.Join(root, "repo", ".git", "baton", "features", "demo-1")
@@ -91,8 +94,9 @@ func TestSkeleton(t *testing.T) {
 	wantOut(t, wait, "Picked up demo-1 as orchestrator: ready, round 1 of 3, from lead.\nNote: "+
 		filepath.Join(feature, "notes", "06-lead-to-orchestrator.md")+"\n")
 
-	wantOut(t, exec.CommandContext(t.Context(), "baton", "status"),
-		"FEATURE  HOLDER        ROUND   STATUS\ndemo-1   orchestrator  1 of 3  ready\n")
+	wantOut(t, exec.CommandContext(t.Context(), "baton", "status"), ""+
+		"FEATURE  HOLDER        ROUND   STATUS  CREDITS  LEAD  ENGINEER  QA    REVIEWER\n"+
+		"demo-1   orchestrator  1 of 3  ready   1.25     0.50  0.25      0.25  0.25\n")
 	wantJournal(t, feature, []logged{
 		{"start orchestrator  01-orchestrator-to-lead.md", "Add demo.txt.\n"},
 		{"pickup lead  ", ""},

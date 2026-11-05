@@ -41,7 +41,8 @@ func TestPaneGivesTheRoleItsSettings(t *testing.T) {
 			args: []string{
 				"copilot", "--agent", "baton:lead", "--plugin-dir", pluginIn(t, cache),
 				"--model", "gpt-5.6-sol", "--reasoning-effort", "high",
-				"--max-ai-credits", "1000000.5", "--allow-all", "--no-ask-user",
+				"--max-ai-credits", "1000000.5", "--session-id", sessionOf(t, store, flow.RoleLead),
+				"--allow-all", "--no-ask-user",
 				"--available-tools", "bash", "read_bash", "stop_bash", "list_bash", "view",
 				"create", "edit", "grep", "glob", "web_fetch",
 				"-i", "Picked up demo-1 as lead: round 0 of 3, from orchestrator.\nNote: " +

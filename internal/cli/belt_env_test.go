@@ -2,8 +2,10 @@ package cli_test
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -99,8 +101,9 @@ func TestRolePaneAddsToGitsSettings(t *testing.T) {
 
 				wantCopilot(t, paneFor(t, env), flow.RoleLead, execed{
 					path: copilot,
-					args: copilotLine(flow.RoleLead, pluginIn(t, cache), leadsBrief(store)),
-					env:  roleEnv(belt(1, remotes...)...),
+					args: copilotLine(flow.RoleLead, pluginIn(t, cache),
+						sessionOf(t, store, flow.RoleLead), leadsBrief(store)),
+					env: roleEnv(belt(1, remotes...)...),
 				})
 			})
 		})
@@ -151,8 +154,9 @@ func TestRolePaneMovesTheGitHubToken(t *testing.T) {
 
 				wantCopilot(t, paneFor(t, env), flow.RoleLead, execed{
 					path: copilot,
-					args: copilotLine(flow.RoleLead, pluginIn(t, cache), leadsBrief(store)),
-					env:  roleEnv(append(belt(0), test.copilot...)...),
+					args: copilotLine(flow.RoleLead, pluginIn(t, cache),
+						sessionOf(t, store, flow.RoleLead), leadsBrief(store)),
+					env: roleEnv(append(belt(0), test.copilot...)...),
 				})
 			})
 		})
@@ -173,4 +177,42 @@ func setenv(t *testing.T, vars ...string) {
 func leadsBrief(store state.Store) string {
 	return "Picked up demo-1 as lead: round 0 of 3, from orchestrator.\nNote: " +
 		notePath(store, "01-orchestrator-to-lead.md") + "\n"
+}
+
+// copilotEnv returns the environment that a role's copilot gets in a repo whose remotes need the
+// push rules, with none of git's settings in baton's environment (decision 55).
+func copilotEnv(rules ...[2]string) []string {
+	return roleEnv(belt(0, rules...)...)
+}
+
+// roleEnv returns the environment that a role's copilot gets, with the variables: baton's, without
+// its GitHub tokens, with BATON_BIN naming this baton, for the stop hook, the PATH with this
+// baton's folder first, COPILOT_ALLOW_ALL=true, which trusts copilot's folder, and the variables,
+// each in place of the user's own value, since copilot reads the first of two (fact 9, decisions
+// 39, 47, 55 and 62).
+func roleEnv(vars ...string) []string {
+	vars = append([]string{"BATON_BIN=" + self, "PATH=" + selfFirst(), "COPILOT_ALLOW_ALL=true"},
+		vars...)
+
+	return append(withoutVars(slices.Concat(names(vars), githubTokens)...), vars...)
+}
+
+// names returns the variables' names.
+func names(vars []string) []string {
+	names := make([]string, 0, len(vars))
+	for _, variable := range vars {
+		name, _, _ := strings.Cut(variable, "=")
+		names = append(names, name)
+	}
+
+	return names
+}
+
+// withoutVars returns baton's environment without the variables with the names.
+func withoutVars(names ...string) []string {
+	return slices.DeleteFunc(os.Environ(), func(variable string) bool {
+		name, _, _ := strings.Cut(variable, "=")
+
+		return slices.Contains(names, name)
+	})
 }

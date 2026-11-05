@@ -2,24 +2,29 @@
 # A stand-in for copilot, for baton's walking skeleton (TestSkeleton in main_test.go). It plays its
 # pane's role through one round, as the role's agent would, without a model. For each piece of
 # work, it logs its agent, the turn and the work's first line to $SKELETON_LOG, reads the note and
-# does the role's part. Then it ends its turn too soon, as a model might, and logs the answer of
-# the plugin's agentStop hook, which it runs as copilot does: block, since the role holds the
-# feature. It hands over with a note from outside the worktree, starts baton wait in the
-# background, as the role's agent does, and ends its turn until the hook lets it, once the wait
-# waits; if the hook never does, it logs that. Then it waits for the wait, which ends when the
-# role's next work comes, or when the pane does.
+# does the role's part, and logs the AI credits of the turn's model call in its session's events,
+# as copilot would, a quarter of a credit each. Then it ends its turn too soon, as a model might,
+# and logs the answer of the plugin's agentStop hook, which it runs as copilot does: block, since
+# the role holds the feature. It hands over with a note from outside the worktree, starts baton
+# wait in the background, as the role's agent does, and ends its turn until the hook lets it, once
+# the wait waits; if the hook never does, it logs that. Then it waits for the wait, which ends when
+# the role's next work comes, or when the pane does.
 set -eu
 : "${BATON_ROLE:?}" "${SKELETON_LOG:?}"
 
-agent='' plugin='' work=''
+agent='' plugin='' session='' work=''
 while [ "$#" -gt 0 ]; do
 	case $1 in
 	--agent) agent=$2 ;;
 	--plugin-dir) plugin=$2 ;;
+	--session-id) session=$2 ;;
 	-i) work=$2 ;;
 	esac
 	shift
 done
+
+events="${COPILOT_HOME:-$HOME/.copilot}/session-state/${session:?}"
+mkdir -p "$events"
 
 hook=$(jq -r '.hooks.agentStop[0].bash' "$plugin/com.github.copilot/hooks/hooks.json")
 
@@ -67,6 +72,9 @@ while :; do
 		exit 1
 		;;
 	esac
+
+	printf '{"type":"session.usage_record","data":{"usage":%s}}\n' \
+		'{"copilotUsage":{"totalNanoAiu":250000000}}' >>"$events/events.jsonl"
 
 	printf '%s %s stop: %s\n' "$agent" "$turn" "$(stop)" >>"$SKELETON_LOG"
 	baton handover "$@"
