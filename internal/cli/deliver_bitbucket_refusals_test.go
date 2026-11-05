@@ -181,7 +181,7 @@ func TestDeliverReportsWhatBitbucketRefuses(t *testing.T) {
 			wantPushed(t, ready.origin, head(t, ready.mainDir))
 			wantGh(t, calls, "")
 
-			if requested := len(pulls.got) == 1; requested == test.gone {
+			if (len(pulls.got) == 1) == test.gone {
 				t.Errorf("Bitbucket got %+v", pulls.got)
 			}
 
