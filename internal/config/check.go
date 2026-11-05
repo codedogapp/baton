@@ -30,8 +30,8 @@ func check(top Settings, repos map[string]Settings) error {
 		switch {
 		case name == "":
 			return errors.New("repos: an empty key: want a remote's URL")
-		case key(name) != name:
-			return fmt.Errorf("repos: %q: want %q, the URL's host and path", name, key(name))
+		case Key(name) != name:
+			return fmt.Errorf("repos: %q: want %q, the URL's host and path", name, Key(name))
 		}
 
 		if err := repos[name].check(); err != nil {
@@ -55,6 +55,10 @@ func (s Settings) check() error {
 
 	if err := s.Jira.check(); err != nil {
 		return fmt.Errorf("jira: %w", err)
+	}
+
+	if email := s.Bitbucket.Email; email != "" && !address(email) {
+		return fmt.Errorf("bitbucket: email %q: want your email address at Atlassian alone", email)
 	}
 
 	for _, role := range slices.Sorted(maps.Keys(s.Roles)) {
@@ -125,10 +129,10 @@ func checkTools(role flow.Role, tools []string) error {
 	return nil
 }
 
-// key returns a repo's key in the config file, from its remote's URL: the URL's host and path,
+// Key returns a repo's key in the config file, from its remote's URL: the URL's host and path,
 // without its scheme, user and port, or a last slash or .git, so that a repo's HTTPS and SSH URLs
 // give the same key, such as github.com/codedogapp/baton. A local path stays a path.
-func key(remote string) string {
+func Key(remote string) string {
 	name := remote
 
 	if parsed, err := url.Parse(remote); err == nil && strings.Contains(remote, "://") {

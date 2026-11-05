@@ -92,8 +92,14 @@ type keychainFunc = func(ctx context.Context, service, account string) (string, 
 // holding returns a stand-in for the keychain that holds the password for baton's Jira item of
 // the user's account, and no other item.
 func holding(password string) keychainFunc {
-	return func(_ context.Context, service, account string) (string, error) {
-		if service != "baton-jira" || account != "me@example.com" {
+	return holdingItem("baton-jira", "me@example.com", password)
+}
+
+// holdingItem returns a stand-in for the keychain that holds the password in the item for the
+// service and the account, and no other item.
+func holdingItem(service, account, password string) keychainFunc {
+	return func(_ context.Context, itemService, itemAccount string) (string, error) {
+		if itemService != service || itemAccount != account {
 			return "", keychain.ErrNotFound
 		}
 

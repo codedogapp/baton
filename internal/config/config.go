@@ -47,6 +47,9 @@ type Settings struct {
 	Gate string `json:"gate"`
 	// Jira is the Jira site that baton jira reads tickets from (decision 60).
 	Jira Jira `json:"jira"`
+	// Bitbucket is the user's account on Bitbucket Cloud, which baton deliver opens a repo's pull
+	// requests there as (decision 65).
+	Bitbucket Bitbucket `json:"bitbucket"`
 }
 
 // Jira is a Jira Cloud site, and the user's account there, whose API token the login keychain
@@ -54,6 +57,13 @@ type Settings struct {
 type Jira struct {
 	// Site is the site's host name, such as example.atlassian.net.
 	Site string `json:"site"`
+	// Email is the user's email address at Atlassian, which names their account.
+	Email string `json:"email"`
+}
+
+// Bitbucket is the user's account on Bitbucket Cloud, whose API token the login keychain holds
+// (decision 65).
+type Bitbucket struct {
 	// Email is the user's email address at Atlassian, which names their account.
 	Email string `json:"email"`
 }
@@ -130,7 +140,7 @@ func Load(configDir, remote string) (Settings, error) {
 		return Settings{}, fmt.Errorf("config file %s: %w", path, err)
 	}
 
-	return defaults().with(content.Settings).with(content.Repos[key(remote)]), nil
+	return defaults().with(content.Settings).with(content.Repos[Key(remote)]), nil
 }
 
 // layers are the config file's content: its settings for every repo, and each repo's section, by
@@ -156,6 +166,7 @@ func (s Settings) with(layer Settings) Settings {
 		PlanApproval: cmp.Or(layer.PlanApproval, s.PlanApproval),
 		Gate:         cmp.Or(layer.Gate, s.Gate),
 		Jira:         s.Jira.with(layer.Jira),
+		Bitbucket:    Bitbucket{Email: cmp.Or(layer.Bitbucket.Email, s.Bitbucket.Email)},
 	}
 }
 

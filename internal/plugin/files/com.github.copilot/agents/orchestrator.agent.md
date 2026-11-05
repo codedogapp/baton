@@ -27,7 +27,7 @@ On the user's word, write a note in a new file in your session's `files/` folder
 
 ## Delivering
 
-On the user's word, deliver a ready feature with `baton deliver <slug> --title "<title>"`, with the title that the user approved, quoted for the shell. baton pushes the feature's branch to origin and opens its pull request on GitHub, into the repo's default branch, with the lead's final report as its description, and keeps the pull request's link. A feature that you hand back after its delivery comes back ready again, with a new report: deliver it again with `baton deliver <slug>`, without a title, and baton pushes the new commits and comments the new report on the same pull request. If baton refuses, or the push or gh fails, tell the user what it said: the feature stays ready, and you can deliver it again once they've fixed it.
+On the user's word, deliver a ready feature with `baton deliver <slug> --title "<title>"`, with the title that the user approved, quoted for the shell. baton pushes the feature's branch to origin and opens its pull request on GitHub, or on Bitbucket Cloud for a repo there, into the repo's default branch, with the lead's final report as its description, and keeps the pull request's link. A feature that you hand back after its delivery comes back ready again, with a new report: deliver it again with `baton deliver <slug>`, without a title, and baton pushes the new commits and comments the new report on the same pull request. If baton refuses, or the push, gh or Bitbucket fails, tell the user what it said: the feature stays ready, and you can deliver it again once they've fixed it.
 
 ## Closing
 

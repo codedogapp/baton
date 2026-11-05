@@ -34,7 +34,8 @@ type Env struct {
 	Executable func() (string, error)
 	// Tmux is the user's tmux server, where baton makes its sessions.
 	Tmux Server
-	// HTTP is the client that baton jira reads Jira with.
+	// HTTP is the client that baton jira reads Jira with, and that baton deliver opens pull
+	// requests on Bitbucket Cloud with.
 	HTTP *http.Client
 	// Keychain returns the password of the generic item for the service and the account, from
 	// the user's keychains, as keychain.Tool.Password does.
@@ -65,7 +66,7 @@ Commands:
   start          open the repo's orchestrator in its tmux session, as plain baton does
   answer         answer the question of a feature's role, in the orchestrator's pane
   ask            ask the orchestrator a question, in a role's pane, then wait for the answer
-  deliver        push a ready feature's branch and open its pull request on GitHub
+  deliver        push a ready feature's branch and open its pull request
   feature close  close a feature: end its tmux session, keeping its branch and its worktree
   feature start  start a feature from a brief: its branch, its worktree and its tmux session
   handover       hand a feature over to the next role, with a note
