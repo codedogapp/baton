@@ -4,7 +4,17 @@ Hand a ticket to a team of Copilot CLI agents in tmux: lead, engineer, QA and re
 
 You talk to one agent, the orchestrator. It reads the ticket, plans the work as features and, once you approve the plan, starts each feature in its own git worktree and its own tmux session, with one visible, interactive Copilot CLI pane per role. The `baton` binary enforces the flow between the roles: who works next, that your repo's checks pass, the rounds of QA and review, and when to stop and ask you. Nothing leaves your Mac until you say so: the last handover is yours, and only your word pushes the branch and opens the pull request.
 
-**Status**: in development; nothing to install yet. The design and the steps are in [docs/plan.md](docs/plan.md), and the rules for working on baton in [AGENTS.md](AGENTS.md).
+**Status**: in development. The design and the steps are in [docs/plan.md](docs/plan.md), and the rules for working on baton in [AGENTS.md](AGENTS.md).
+
+## Install
+
+Each [release](https://github.com/codedogapp/baton/releases) holds baton for macOS on Apple silicon. Install the latest with [mise](https://mise.jdx.dev):
+
+```sh
+mise use -g github:codedogapp/baton
+```
+
+mise checks the archive against the digest that GitHub gives for it and against its attestation, which shows that this repo's release workflow built it from the release's tag. As for every tool, mise holds a release back for its first 24 hours (its `minimum_release_age`); to install one sooner, name its version, as in `mise use -g github:codedogapp/baton@0.1.0`. Apple hasn't notarized baton, so macOS blocks a copy that a browser downloaded until you allow it under Privacy & Security in System Settings; mise's copy runs as it is.
 
 ## Requirements
 
@@ -75,3 +85,7 @@ When you name a Jira Cloud ticket, the orchestrator reads it with `baton jira <K
 3. Put it in your login Keychain, as baton's item for your email: `security add-generic-password -s baton-jira -a you@example.com -w`, which asks for the token, so that it stays out of your shell's history. When the token expires, put the new one in its place with the same command and `-U`, which `baton jira` gives when Jira refuses your login.
 
 baton sends the token to Atlassian's gateway, `api.atlassian.com`, alone, and never prints it. Any program that runs as you can read the item, though, the roles' commands included, so give the token no other scope.
+
+## License
+
+baton is under the [MIT license](LICENSE). Each release's archive holds it, and in `THIRD_PARTY_LICENSES` the licenses of the code built into baton: Go's and mvdan.cc/sh's, both BSD-3-Clause.
