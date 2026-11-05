@@ -9,7 +9,7 @@ Commands:
   start          open the repo's orchestrator in its tmux session, as plain baton does
   answer         answer the question of a feature's role, in the orchestrator's pane
   ask            ask the orchestrator a question, in a role's pane, then wait for the answer
-  deliver        push a ready feature's branch and open its pull request on GitHub
+  deliver        push a ready feature's branch and open its pull request
   feature close  close a feature: end its tmux session, keeping its branch and its worktree
   feature start  start a feature from a brief: its branch, its worktree and its tmux session
   handover       hand a feature over to the next role, with a note

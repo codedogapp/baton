@@ -13,9 +13,9 @@ import (
 	"github.com/codedogapp/baton/internal/keychain"
 )
 
-// keychainService is the service of the keychain's item that holds the user's Jira API token,
+// jiraService is the service of the keychain's item that holds the user's Jira API token,
 // whose account is the user's email (decision 60).
-const keychainService = "baton-jira"
+const jiraService = "baton-jira"
 
 // showTicket prints a Jira ticket and its comments as Markdown, for the orchestrator to plan from:
 // it reads the ticket from the site in the config file, as the user, with their API token from
@@ -35,11 +35,11 @@ func showTicket(ctx context.Context, env Env, args []string) error {
 		return err
 	}
 
-	token, err := env.Keychain(ctx, keychainService, site.Email)
+	token, err := env.Keychain(ctx, jiraService, site.Email)
 	if errors.Is(err, keychain.ErrNotFound) {
 		return fmt.Errorf("no Jira API token for %s in the keychain: add it with `security "+
 			"add-generic-password -s %s -a %s -w`, which asks for it", site.Email,
-			keychainService, quoted(site.Email))
+			jiraService, quoted(site.Email))
 	}
 
 	if err != nil {
@@ -53,7 +53,7 @@ func showTicket(ctx context.Context, env Env, args []string) error {
 		return fmt.Errorf("the Jira login as %s failed (%w): check that email, and if the token "+
 			"has expired or lacks the scope read:jira-work, make a new one and replace it with "+
 			"`security add-generic-password -U -s %s -a %s -w`, which asks for it", site.Email,
-			err, keychainService, quoted(site.Email))
+			err, jiraService, quoted(site.Email))
 	}
 
 	if err != nil {

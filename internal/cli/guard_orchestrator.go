@@ -103,8 +103,8 @@ func orchestratorCommand(command guard.Command, approval bool) guardOutput {
 		return guardOutput{}
 	case command.Name == batonDeliver:
 		return guardOutput{"ask", guardAsks + "`baton deliver` pushes a feature's branch to " +
-			"origin, then opens its pull request on GitHub or comments on it. Allow it if you " +
-			"want the feature delivered."}
+			"origin, then opens its pull request on GitHub or Bitbucket Cloud, or comments on " +
+			"it. Allow it if you want the feature delivered."}
 	case command.Name == featureClose:
 		return guardOutput{"ask", guardAsks + "`baton feature close` ends a feature's team, even " +
 			"mid-work: its tmux session, with the roles' panes. It keeps the feature's branch, " +

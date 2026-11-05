@@ -22,6 +22,7 @@ baton needs a config file, `config.json` in `~/Library/Application Support/baton
 - `planApproval`: whether baton asks you before each feature starts, so that you can check the orchestrator's plan first (by default `true`).
 - `gate`: the command that checks the repo's code, such as `mise run check`, with no default: baton starts neither the orchestrator nor a feature in a repo without one. The engineer's handover, QA's approval and the lead's final report run it with `/bin/sh -c` in the feature's worktree, and wait until it passes. `"true"` checks nothing.
 - `jira`: your Jira Cloud site's host name and your email address at Atlassian, for `baton jira`, such as `{"site": "example.atlassian.net", "email": "you@example.com"}`, with no default.
+- `bitbucket`: your email address at Atlassian, for the pull requests that baton opens on Bitbucket Cloud, such as `{"email": "you@example.com"}`, with no default.
 
 For example, one gate and QA on another model with a cap, for every repo, and two rounds with another branch prefix for one repo:
 
@@ -37,9 +38,21 @@ baton checks the whole file each time it reads it, and refuses a file with a mis
 
 ## Pull requests
 
-When a feature is ready, the orchestrator reports it to you, with a title for its pull request. On your word, it delivers the feature with `baton deliver <slug> --title "<title>"`, which baton's guard asks you about first; you can run it too. baton pushes the feature's branch to `origin`, with your git, then opens its pull request with your `gh`, into the GitHub repo's default branch, with the lead's final report as its description, as it is: read the report first, at the path that the orchestrator gives, if you want to see what goes out. If you hand the feature back for changes, deliver it again once it's ready, without `--title`: baton pushes the new commits and comments the lead's new report on the same pull request. baton never merges.
+When a feature is ready, the orchestrator reports it to you, with a title for its pull request. On your word, it delivers the feature with `baton deliver <slug> --title "<title>"`, which baton's guard asks you about first; you can run it too. baton pushes the feature's branch to `origin`, with your git, then opens its pull request into the repo's default branch, with your `gh` on GitHub, or as below on Bitbucket Cloud, with the lead's final report as its description, as it is: read the report first, at the path that the orchestrator gives, if you want to see what goes out. If you hand the feature back for changes, deliver it again once it's ready, without `--title`: baton pushes the new commits and comments the lead's new report on the same pull request. baton never merges.
 
 gh picks the GitHub repo from the repo's remotes, as `gh pr create` does, so baton doesn't handle a fork with an `upstream` remote yet.
+
+### Bitbucket Cloud
+
+For a repo whose `origin` remote names `bitbucket.org` in its URL, such as `git@bitbucket.org:acme/demo.git`, baton opens the pull request, and comments on it, with Bitbucket's API instead, as you. It needs your email and an API token, which it checks for before it pushes anything:
+
+1. Set `bitbucket` in the config file to your email address at Atlassian.
+2. At [id.atlassian.com](https://id.atlassian.com/manage-profile/security/api-tokens), create an API token with scopes, for Bitbucket, with the scopes `read:pullrequest:bitbucket` and `write:pullrequest:bitbucket` alone, kept to your workspace.
+3. Put it in your login Keychain, as baton's item for your email: `security add-generic-password -s baton-bitbucket -a you@example.com -w`, which asks for the token, so that it stays out of your shell's history. When the token expires, put the new one in its place with the same command and `-U`, which `baton deliver` gives when Bitbucket refuses your login.
+
+baton sends the token to `api.bitbucket.org` alone, and never prints it; git pushes the branch with your own login, as for GitHub. The token can also approve, decline and merge pull requests wherever you can, and any program that runs as you can read the item, the roles' commands included, so give it a short expiry.
+
+baton finds Bitbucket by `bitbucket.org` in `origin`'s URL alone: a remote with an SSH alias from `~/.ssh/config` in its place, such as `bb:acme/demo.git`, is a GitHub repo to baton, and gh fails after the push. Name `bitbucket.org` in `origin`'s URL instead.
 
 ## Closing a feature
 

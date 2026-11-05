@@ -57,12 +57,18 @@ func openStore(ctx context.Context, dir string) (state.Store, error) {
 // loadSettings returns baton's settings for the repo that holds the folder, from the config file
 // in the user's config folder, by the URL of the repo's origin remote (decision 49).
 func loadSettings(ctx context.Context, dir string) (config.Settings, error) {
-	configDir, err := userConfigDir()
+	remote, err := repo.Remote(ctx, dir)
 	if err != nil {
 		return config.Settings{}, err
 	}
 
-	remote, err := repo.Remote(ctx, dir)
+	return settingsOf(remote)
+}
+
+// settingsOf returns baton's settings for the repo whose origin remote has the URL, from the
+// config file in the user's config folder (decision 49).
+func settingsOf(remote string) (config.Settings, error) {
+	configDir, err := userConfigDir()
 	if err != nil {
 		return config.Settings{}, err
 	}

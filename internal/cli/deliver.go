@@ -13,9 +13,10 @@ import (
 )
 
 // deliver delivers a ready feature, on the user's word: it pushes the feature's branch to origin,
-// then opens the branch's pull request on GitHub, with the title and the lead's final report as
-// its body, or comments the report on the pull request that an earlier delivery opened, and
-// records it (decision 61). Only the orchestrator delivers features, so it refuses a role's pane.
+// then opens the branch's pull request on the repo's host, GitHub or Bitbucket Cloud, with the
+// title and the lead's final report as its body, or comments the report on the pull request that
+// an earlier delivery opened, and records it (decisions 61 and 65). Only the orchestrator delivers
+// features, so it refuses a role's pane.
 func deliver(ctx context.Context, env Env, args []string) error {
 	slug, title, err := parseDeliver(env, args)
 	if err != nil {
@@ -37,10 +38,11 @@ func deliver(ctx context.Context, env Env, args []string) error {
 		err = deliverable(feature, title)
 	}
 
-	if err == nil {
-		err = repo.Push(ctx, env.Dir, feature.Branch)
+	if err != nil {
+		return err
 	}
 
+	pulls, err := push(ctx, env, feature.Branch)
 	if err != nil {
 		return err
 	}
@@ -49,7 +51,7 @@ func deliver(ctx context.Context, env Env, args []string) error {
 		Branch: feature.Branch, Title: title, BodyFile: store.NotePath(slug, feature.Work.Note),
 	}
 
-	url, did, err := publish(ctx, env.Dir, feature.PullRequest, pr)
+	url, did, err := publish(ctx, pulls, feature.PullRequest, pr)
 	if err != nil {
 		return err
 	}
@@ -101,19 +103,53 @@ func deliverable(feature state.Feature, title string) error {
 	return nil
 }
 
-// publish opens the pull request, or comments its body on the one at the URL, if any, in the
-// folder's repo. It returns the pull request's URL, and what it did.
-func publish(ctx context.Context, dir, url string, request github.PullRequest) (
+// push finds the host of the pull requests of the folder's repo, then pushes the branch to origin,
+// and returns the host. It finds the host first, so that a missing account or token pushes
+// nothing.
+func push(ctx context.Context, env Env, branch string) (host, error) {
+	pulls, err := hostOf(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := repo.Push(ctx, env.Dir, branch); err != nil {
+		return nil, err
+	}
+
+	return pulls, nil
+}
+
+// publish opens the pull request on the host, or comments its body on the one at the URL, if
+// any. It returns the pull request's URL, and what it did.
+func publish(ctx context.Context, pulls host, url string, request github.PullRequest) (
 	link, did string, err error,
 ) {
 	if url != "" {
-		return url, "commented the lead's report on",
-			github.Comment(ctx, dir, url, request.BodyFile)
+		return url, "commented the lead's report on", pulls.comment(ctx, url, request.BodyFile)
 	}
 
-	link, err = github.Open(ctx, dir, request)
+	link, err = pulls.open(ctx, request)
 
 	return link, "opened", err
+}
+
+// host is where a repo's pull requests are: GitHub, or Bitbucket Cloud (decision 65).
+type host interface {
+	// open opens the pull request, with the report in its body file, and returns its URL.
+	open(ctx context.Context, request github.PullRequest) (string, error)
+	// comment comments the report in the body file on the pull request at the URL.
+	comment(ctx context.Context, url, bodyFile string) error
+}
+
+// gitHub is GitHub, where gh opens the pull requests of the folder's repo, as the user.
+type gitHub struct{ dir string }
+
+func (g gitHub) open(ctx context.Context, request github.PullRequest) (string, error) {
+	return github.Open(ctx, g.dir, request)
+}
+
+func (g gitHub) comment(ctx context.Context, url, bodyFile string) error {
+	return github.Comment(ctx, g.dir, url, bodyFile)
 }
 
 // delivered returns the change that records the feature's delivery to its pull request at the
