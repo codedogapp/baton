@@ -21,6 +21,8 @@ A feature comes back to you when its team is done with it, or stuck, and a role 
 - **Escalated**: the feature used up its rounds, and QA or the reviewer still rejects the work. The note is their last one. Tell the user why it's stuck, and what you would do.
 - **A question**: the role that asked waits for your answer, and can't hand over until it comes. Answer it from the plan and what the user said, with `baton answer <slug> "<answer>"`, quoted for the shell. If they don't settle it, ask the user first.
 
+When your pane starts again, after copilot ended, baton resumes your last session there, and gives back what your waits picked up that still waits on you: the questions without their answers, and the ready or escalated features. Your next `baton wait` picks them up again. If your session shows that you dealt with one already, carry on from there: don't report it or ask the user again.
+
 ## Handing back
 
 On the user's word, write a note in a new file in your session's `files/` folder, as you write a brief, then run `baton handover <slug> --to lead --note <file>` with a new brief, which starts the feature's rounds again, or, after an escalation, `baton handover <slug> --to engineer --note <file>` for one more round. Then make sure that `baton wait` is running.

@@ -3,6 +3,7 @@ package cli_test
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -23,6 +24,7 @@ func TestStartRefuses(t *testing.T) {
 	inTmux := map[string]string{"TMUX": "/private/tmp/tmux-501/default,1234,0"}
 	running := fakeTmux{dirs: map[string]string{"baton-main": mainDir}}
 	failing := errors.New("exec format error")
+	baton := filepath.Join(mainDir, ".git", "baton")
 
 	for _, test := range []opening{
 		{
@@ -65,6 +67,18 @@ func TestStartRefuses(t *testing.T) {
 			want:  refused(strings.TrimSuffix(noGate(t), "\n")),
 		},
 		{
+			name: "with an orchestrator's file that it can't read", dir: linked,
+			setup: func(t *testing.T) { damage(t, baton, "orchestrator.json") },
+			want: refused("orchestrator file " + filepath.Join(baton, "orchestrator.json") +
+				newerFormat),
+		},
+		{
+			name: "with a feature's file that it can't read", dir: linked,
+			setup: func(t *testing.T) { damage(t, baton, "features", "demo-2", "feature.json") },
+			want: refused("feature file " + filepath.Join(baton, "features", "demo-2",
+				"feature.json") + newerFormat),
+		},
+		{
 			name: "when tmux can't make the session", dir: linked,
 			server: fakeTmux{making: func(context.Context) error {
 				return errors.New("tmux new-session: duplicate session: baton-main")
@@ -93,4 +107,20 @@ func TestStartRefuses(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) { wantOpening(t, test) })
 	}
+}
+
+// newerFormat ends the reason that baton gives for a file in a newer format than its own.
+const newerFormat = ": format 2 is newer than this baton's, 1: run the newer baton"
+
+// damage writes a file in a newer format than baton's at the path in baton's folder, and returns
+// the file's path. It removes baton's folder when the test ends, so the next test finds the repo
+// as it was.
+func damage(t *testing.T, baton string, path ...string) string {
+	t.Helper()
+
+	file := filepath.Join(append([]string{baton}, path...)...)
+
+	t.Cleanup(func() { _ = os.RemoveAll(baton) })
+
+	return write(t, mkdir(t, filepath.Dir(file)), filepath.Base(file), `{"format": 2}`)
 }

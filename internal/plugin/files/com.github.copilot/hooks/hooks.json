@@ -12,6 +12,12 @@
         "type": "command",
         "bash": "\"$BATON_BIN\" hook stop"
       }
+    ],
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "\"$BATON_BIN\" hook session"
+      }
     ]
   }
 }

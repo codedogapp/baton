@@ -52,9 +52,9 @@ func open(ctx context.Context, env Env, args []string) error {
 
 // makeOrchestrator makes the orchestrator's session in the main worktree, with one pane, which runs
 // this baton's pane command as the orchestrator (decisions 42 and 44). It reads the config file
-// first, as the pane does, since a pane that fails takes its session with it, and the reason too:
-// a mistake in the file shows here instead (decision 49), as does a missing gate, without which no
-// feature starts (decision 56).
+// and baton's folder first, as the pane does, since a pane that fails takes its session with it,
+// and the reason too: a mistake in the file shows here instead (decision 49), as do a missing gate,
+// without which no feature starts (decision 56), and a damaged file in baton's folder (risk 19).
 func makeOrchestrator(ctx context.Context, env Env, name, mainDir string) error {
 	self, err := env.Executable()
 	if err != nil {
@@ -62,6 +62,10 @@ func makeOrchestrator(ctx context.Context, env Env, name, mainDir string) error 
 	}
 
 	if _, err := gatedSettings(ctx, mainDir); err != nil {
+		return err
+	}
+
+	if err := resumable(ctx, mainDir); err != nil {
 		return err
 	}
 

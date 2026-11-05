@@ -225,6 +225,17 @@ func write(t *testing.T, dir, name, text string) string {
 	return path
 }
 
+// mkdir makes the folder, and the folders it's in, and returns its path.
+func mkdir(t *testing.T, folder string) string {
+	t.Helper()
+
+	if err := os.MkdirAll(folder, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	return folder
+}
+
 // snapshot returns the files in the folder and in its subfolders, each with its content.
 func snapshot(t *testing.T, dir string) map[string]string {
 	t.Helper()

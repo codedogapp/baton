@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"uuid"
 
 	"github.com/codedogapp/baton/internal/config"
 	"github.com/codedogapp/baton/internal/flow"
@@ -31,14 +32,15 @@ const envPath = "PATH"
 
 // pane becomes the pane's copilot, with the role's settings from the config file (decision 49),
 // and with the folder of baton's own program first on its PATH (decision 62). The orchestrator's
-// copilot starts at once, since the user talks to it. A role's pane waits for the role's first
-// work, then becomes the role's copilot, with that work as its first prompt (decision 38), in the
-// role's session in the feature, whose ID baton keeps (decision 66), and with the belt in its
-// environment (decision 55); a pane that starts again while its role holds the work that it picked
-// up carries on with that work at once (decision 67). It finds copilot, writes the plugin, reads
-// the settings and makes the belt before it waits, so that a pane that can't start copilot never
-// picks up work that nobody would then do. After the wait it checks the plugin again, which a role
-// may have changed meanwhile (decision 53).
+// copilot starts at once, since the user talks to it, in the session that baton keeps for it, once
+// the pane has given back what its last copilot's waits picked up (decision 68). A role's pane
+// waits for the role's first work, then becomes the role's copilot, with that work as its first
+// prompt (decision 38), in the role's session in the feature, whose ID baton keeps (decision 66),
+// and with the belt in its environment (decision 55); a pane that starts again while its role
+// holds the work that it picked up carries on with that work at once (decision 67). It finds
+// copilot, writes the plugin, reads the settings and makes the belt before it waits, so that a pane
+// that can't start copilot never picks up work that nobody would then do. After the wait it checks
+// the plugin again, which a role may have changed meanwhile (decision 53).
 func pane(ctx context.Context, env Env, args []string) error {
 	if err := parse(newFlags(env, "pane"), args); err != nil {
 		return err
@@ -49,29 +51,16 @@ func pane(ctx context.Context, env Env, args []string) error {
 		return err
 	}
 
-	self, err := env.Executable()
-	if err != nil {
-		return fmt.Errorf("find baton's own program: %w", err)
-	}
-
-	program, dir, err := prepare()
+	start, err := prepare(ctx, env, role)
 	if err != nil {
 		return err
 	}
 
-	settings, err := loadSettings(ctx, env.Dir)
-	if err != nil {
-		return err
-	}
-
-	own := settings.Roles[role]
-
-	vars := []string{envBin + "=" + self, envPath + "=" + findable(self)}
 	if role == flow.RoleOrchestrator {
-		return becomeCopilot(env, program, orchestrating(dir, own), environment(vars...))
+		return becomeOrchestrator(ctx, env, start)
 	}
 
-	vars, err = belted(ctx, env.Dir, append(vars, allowAll+"=true")...)
+	vars, err := belted(ctx, env.Dir, append(start.vars, allowAll+"=true")...)
 	if err != nil {
 		return err
 	}
@@ -81,11 +70,12 @@ func pane(ctx context.Context, env Env, args []string) error {
 		return err
 	}
 
-	if dir, err = writePlugin(); err != nil {
+	dir, err := writePlugin()
+	if err != nil {
 		return err
 	}
 
-	return becomeCopilot(env, program, command(role, dir, own, turn), vars)
+	return becomeCopilot(env, start.program, command(role, dir, start.own, turn), vars)
 }
 
 // becomeCopilot replaces baton with copilot, with the command line and the environment.
@@ -97,19 +87,41 @@ func becomeCopilot(env Env, program string, line, vars []string) error {
 	return nil
 }
 
-// prepare finds copilot and writes the plugin, and returns copilot's path and the plugin's folder.
-func prepare() (program, dir string, err error) {
-	program, err = exec.LookPath("copilot")
+// copilotStart is what the pane starts copilot with: copilot's path, the plugin's folder, the
+// role's settings, and baton's variables for copilot, each one name=value.
+type copilotStart struct {
+	program, plugin string
+	own             config.Role
+	vars            []string
+}
+
+// prepare finds baton's own program and copilot, writes the plugin and reads the role's settings,
+// for the pane's copilot, whose PATH finds baton's own program first (decision 62).
+func prepare(ctx context.Context, env Env, role flow.Role) (copilotStart, error) {
+	self, err := env.Executable()
 	if err != nil {
-		return "", "", err
+		return copilotStart{}, fmt.Errorf("find baton's own program: %w", err)
 	}
 
-	dir, err = writePlugin()
+	program, err := exec.LookPath("copilot")
 	if err != nil {
-		return "", "", err
+		return copilotStart{}, err
 	}
 
-	return program, dir, nil
+	dir, err := writePlugin()
+	if err != nil {
+		return copilotStart{}, err
+	}
+
+	settings, err := loadSettings(ctx, env.Dir)
+	if err != nil {
+		return copilotStart{}, err
+	}
+
+	return copilotStart{
+		program: program, plugin: dir, own: settings.Roles[role],
+		vars: []string{envBin + "=" + self, envPath + "=" + findable(self)},
+	}, nil
 }
 
 // writePlugin writes the plugin into baton's cache folder, unless a folder there holds it
@@ -202,14 +214,15 @@ func command(role flow.Role, dir string, own config.Role, turn firstTurn) []stri
 }
 
 // orchestrating returns the orchestrator's copilot command line: its agent in the plugin, its
-// settings, every permission, since baton's guard asks the user what needs asking, and the tools,
-// with ask_user and its extra tools, the user's own, such as nudge's, since the user talks to it.
-// It has no first prompt, since the user speaks first (decisions 45, 49 and 54).
-func orchestrating(dir string, own config.Role) []string {
+// settings, its session, every permission, since baton's guard asks the user what needs asking,
+// and the tools, with ask_user and its extra tools, the user's own, such as nudge's, since the user
+// talks to it. It has no first prompt, since the user speaks first (decisions 45, 49, 54 and 68).
+func orchestrating(dir string, own config.Role, session uuid.UUID) []string {
 	return slices.Concat([]string{
 		"copilot", "--agent", plugin.Agent(flow.RoleOrchestrator), "--plugin-dir", dir,
-	}, settingFlags(own), []string{"--allow-all", "--available-tools"}, tools,
-		[]string{"ask_user"}, own.ExtraTools)
+	}, settingFlags(own), []string{
+		"--session-id", session.String(), "--allow-all", "--available-tools",
+	}, tools, []string{"ask_user"}, own.ExtraTools)
 }
 
 // settingFlags returns copilot's flags for the role's settings: its model, and its reasoning

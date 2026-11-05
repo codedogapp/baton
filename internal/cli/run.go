@@ -71,6 +71,7 @@ Commands:
   feature start  start a feature from a brief: its branch, its worktree and its tmux session
   handover       hand a feature over to the next role, with a note
   hook guard     copilot's tool hook: deny a role what the guard watches, before it runs
+  hook session   copilot's session hook: keep the orchestrator's session, for its pane to resume
   hook stop      copilot's stop hook: send a pane's copilot that stops too soon back to work
   jira           print a Jira ticket and its comments as Markdown, for the orchestrator's plan
   pane           become the pane's copilot: the orchestrator's, or the role's once it has work
@@ -99,7 +100,7 @@ var commands = map[string]commandFunc{
 // groups are baton's commands of two words, by their first word, then their second.
 var groups = map[string]map[string]commandFunc{
 	"feature": {"close": closeFeature, "start": startFeature},
-	"hook":    {"guard": hookGuard, "stop": hookStop},
+	"hook":    {"guard": hookGuard, "session": hookSession, "stop": hookStop},
 }
 
 // usageError is a command line that doesn't parse. The flag package has reported it.
@@ -146,8 +147,10 @@ func runGroup(ctx context.Context, env Env, group map[string]commandFunc) int {
 		}
 	}
 
-	words := strings.Join(slices.Sorted(maps.Keys(group)), " or ")
-	_, _ = fmt.Fprintf(env.Stderr, "baton %s: want %s\n\n%s", name, words, usage)
+	words := slices.Sorted(maps.Keys(group))
+	last := len(words) - 1
+	_, _ = fmt.Fprintf(env.Stderr, "baton %s: want %s or %s\n\n%s", name,
+		strings.Join(words[:last], ", "), words[last], usage)
 
 	return exitUsage
 }
