@@ -13,7 +13,7 @@ import (
 // release. The lock is a flock on a file that baton never replaces, and the kernel releases it
 // when its process ends, so a crash never leaves a feature locked.
 func lock(root *os.Root, slug string) (func(), error) {
-	file, err := openLock(root, filepath.Join(folder(slug), lockFile))
+	unlock, err := take(root, filepath.Join(folder(slug), lockFile))
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, noFeature(slug)
 	}
@@ -22,10 +22,21 @@ func lock(root *os.Root, slug string) (func(), error) {
 		return nil, fmt.Errorf("lock feature %s: %w", slug, err)
 	}
 
+	return unlock, nil
+}
+
+// take takes the exclusive lock on the lock file with the name, waiting while another process
+// holds it, and returns its release.
+func take(root *os.Root, name string) (func(), error) {
+	file, err := openLock(root, name)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := flock(file, syscall.LOCK_EX); err != nil {
 		_ = file.Close()
 
-		return nil, fmt.Errorf("lock feature %s: %w", slug, err)
+		return nil, err
 	}
 
 	return func() { _ = file.Close() }, nil

@@ -106,9 +106,10 @@ func TestPaneWaitsForTheRolesWork(t *testing.T) {
 
 // TestPaneBecomesTheOrchestratorsCopilot has the orchestrator's pane write the plugin and become
 // the orchestrator's copilot at once, with no work to wait for and no first prompt, since the user
-// speaks first, and with copilot's own prompts: the user's environment as it is, with no belt, so
-// with the user's GitHub token and git's settings, but for BATON_BIN, which names this baton for
-// the stop hook, and the PATH, with this baton's folder first (decisions 45, 47, 55 and 62).
+// speaks first, in a new session, which baton keeps for the pane's next start, and with copilot's
+// own prompts: the user's environment as it is, with no belt, so with the user's GitHub token and
+// git's settings, but for BATON_BIN, which names this baton for the plugin's hooks, and the PATH,
+// with this baton's folder first (decisions 45, 47, 55, 62 and 68).
 func TestPaneBecomesTheOrchestratorsCopilot(t *testing.T) {
 	copilot, cache := standIn(t)
 	t.Setenv("COPILOT_ALLOW_ALL", "1")
@@ -130,12 +131,28 @@ func TestPaneBecomesTheOrchestratorsCopilot(t *testing.T) {
 		path: copilot,
 		args: []string{
 			"copilot", "--agent", "baton:orchestrator", "--plugin-dir", pluginIn(t, cache),
-			"--model", "claude-opus-5.5", "--allow-all", "--available-tools", "bash", "read_bash",
-			"stop_bash", "list_bash", "view", "create", "edit", "grep", "glob", "web_fetch",
-			"ask_user", "nudge-ask", "nudge-report",
+			"--model", "claude-opus-5.5", "--session-id", orchestratorSession(t, mainDir),
+			"--allow-all", "--available-tools", "bash", "read_bash", "stop_bash", "list_bash",
+			"view", "create", "edit", "grep", "glob", "web_fetch", "ask_user", "nudge-ask",
+			"nudge-report",
 		},
 		env: orchestratorEnv(),
 	})
+}
+
+// orchestratorSession returns the ID of the session that baton keeps in the repo for the
+// orchestrator's copilot, and fails the test if it keeps none (decision 68).
+func orchestratorSession(t *testing.T, mainDir string) string {
+	t.Helper()
+
+	store := state.Store{Dir: filepath.Join(mainDir, ".git", "baton")}
+
+	session, err := store.OrchestratorSession()
+	if err != nil || session == uuid.Nil() {
+		t.Fatalf("OrchestratorSession = %v, %v; want the orchestrator's session", session, err)
+	}
+
+	return session.String()
 }
 
 // standIn puts a stand-in copilot first on the PATH, and moves the home folder, and with it the

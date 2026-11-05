@@ -9,8 +9,9 @@ import (
 )
 
 // TestTheHooksRunBaton checks the plugin's hooks: the preToolUse hook, which runs baton hook guard,
-// and the agentStop hook, which runs baton hook stop, each with the program that baton pane names
-// in the pane's copilot (decisions 47 and 52).
+// the agentStop hook, which runs baton hook stop, and the sessionStart hook, which runs baton hook
+// session, each with the program that baton pane names in the pane's copilot (decisions 47, 52 and
+// 68).
 func TestTheHooksRunBaton(t *testing.T) {
 	data, err := fs.ReadFile(written(t), "com.github.copilot/hooks/hooks.json")
 	if err != nil {
@@ -32,8 +33,9 @@ func TestTheHooksRunBaton(t *testing.T) {
 	}
 
 	want := map[string][]hook{
-		"preToolUse": {{Type: "command", Bash: `"$BATON_BIN" hook guard`}},
-		"agentStop":  {{Type: "command", Bash: `"$BATON_BIN" hook stop`}},
+		"preToolUse":   {{Type: "command", Bash: `"$BATON_BIN" hook guard`}},
+		"agentStop":    {{Type: "command", Bash: `"$BATON_BIN" hook stop`}},
+		"sessionStart": {{Type: "command", Bash: `"$BATON_BIN" hook session`}},
 	}
 	if config.Version != 1 || !maps.EqualFunc(config.Hooks, want, slices.Equal) {
 		t.Errorf("hooks.json is %+v, want the version 1 and the hooks %+v", config, want)

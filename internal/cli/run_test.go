@@ -14,6 +14,7 @@ Commands:
   feature start  start a feature from a brief: its branch, its worktree and its tmux session
   handover       hand a feature over to the next role, with a note
   hook guard     copilot's tool hook: deny a role what the guard watches, before it runs
+  hook session   copilot's session hook: keep the orchestrator's session, for its pane to resume
   hook stop      copilot's stop hook: send a pane's copilot that stops too soon back to work
   jira           print a Jira ticket and its comments as Markdown, for the orchestrator's plan
   pane           become the pane's copilot: the orchestrator's, or the role's once it has work
@@ -41,7 +42,7 @@ const handoverUsage = `Usage of baton handover:
 
 func TestRunReportsTheUsage(t *testing.T) {
 	wantFeature := "baton feature: want close or start\n\n" + usage
-	wantHook := "baton hook: want guard or stop\n\n" + usage
+	wantHook := "baton hook: want guard, session or stop\n\n" + usage
 	cases := []struct {
 		name string
 		args []string
@@ -79,6 +80,11 @@ func TestRunReportsTheUsage(t *testing.T) {
 			"with hook guard's -h",
 			[]string{"hook", "guard", "-h"},
 			result{stderr: "Usage of baton hook guard:\n"},
+		},
+		{
+			"with hook session's -h",
+			[]string{"hook", "session", "-h"},
+			result{stderr: "Usage of baton hook session:\n"},
 		},
 		{
 			"with hook stop's -h",

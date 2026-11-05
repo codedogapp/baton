@@ -59,7 +59,7 @@ func load(root *os.Root, slug string) (record, error) {
 		return record{}, fmt.Errorf("read feature %s: %w", slug, err)
 	}
 
-	rec, err := decode(data)
+	rec, err := decode[record](data, format)
 	if err == nil {
 		err = rec.check(slug)
 	}
@@ -71,45 +71,53 @@ func load(root *os.Root, slug string) (record, error) {
 	return rec, nil
 }
 
-// decode returns the record in a feature file's content. It reads the format first, so a newer
-// layout gets a clear error, not a confusing one about its fields.
-func decode(data []byte) (record, error) {
+// decode returns the value in a file's content, in the format that this baton wants. It reads the
+// format first, so a newer layout gets a clear error, not a confusing one about its fields.
+func decode[T any](data []byte, want int) (T, error) {
 	var head struct {
 		Format int `json:"format"`
 	}
 
+	var value T
+
 	if err := json.Unmarshal(data, &head); err != nil {
-		return record{}, err
+		return value, err
 	}
 
 	switch {
-	case head.Format > format:
-		return record{}, fmt.Errorf(
-			"format %d is newer than this baton's, %d: run the newer baton", head.Format, format)
-	case head.Format != format:
-		return record{}, fmt.Errorf("format %d: want %d", head.Format, format)
+	case head.Format > want:
+		return value, fmt.Errorf(
+			"format %d is newer than this baton's, %d: run the newer baton", head.Format, want)
+	case head.Format != want:
+		return value, fmt.Errorf("format %d: want %d", head.Format, want)
 	}
 
-	var rec record
-	if err := json.Unmarshal(data, &rec); err != nil {
-		return record{}, err
-	}
+	err := json.Unmarshal(data, &value)
 
-	return rec, nil
+	return value, err
 }
 
-// save writes the record, in this baton's format, to a new temporary file, then renames it over
-// the feature's file, so a reader sees the old file or the new one, never part of one. The caller
-// holds the lock.
+// save writes the record, in this baton's format, over the feature's file. The caller holds the
+// lock.
 func save(root *os.Root, rec record) error {
 	rec.Format = format
 
-	data, err := json.Marshal(rec, jsontext.WithIndent("  "))
-	if err != nil {
-		return fmt.Errorf("encode feature %s: %w", rec.Slug, err)
+	if err := replace(root, filepath.Join(folder(rec.Slug), featureFile), rec); err != nil {
+		return fmt.Errorf("write feature %s: %w", rec.Slug, err)
 	}
 
-	name := filepath.Join(folder(rec.Slug), featureFile)
+	return nil
+}
+
+// replace writes the value as JSON to a new temporary file, then renames it over the file with
+// the name, so a reader sees the old file or the new one, never part of one. The caller holds the
+// file's lock.
+func replace(root *os.Root, name string, value any) error {
+	data, err := json.Marshal(value, jsontext.WithIndent("  "))
+	if err != nil {
+		return err
+	}
+
 	temp := name + ".tmp"
 
 	// A crash can leave a temporary file behind: it goes first, so the new one gets mode 0600.
@@ -120,11 +128,7 @@ func save(root *os.Root, rec record) error {
 		err = root.Rename(temp, name)
 	}
 
-	if err != nil {
-		return fmt.Errorf("write feature %s: %w", rec.Slug, err)
-	}
-
-	return nil
+	return err
 }
 
 // write writes the data to a new file, with mode 0600, and syncs it to disk.
