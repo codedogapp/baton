@@ -56,6 +56,10 @@ var (
 	notInName   = regexp.MustCompile(`[^A-Za-z0-9_-]`)
 )
 
+// setOption is tmux's command that sets an option; baton gives it -w and a window, so that it
+// sets the option on that window alone.
+const setOption = "set-option"
+
 // Name returns the text as a session's name, with an underscore for each character that a name
 // can't hold, such as a dot.
 func Name(text string) string {
@@ -75,8 +79,8 @@ func (s Server) NewSession(ctx context.Context, session Session) error {
 
 	if session.Remain {
 		// In the same call, which tmux runs before it sees the first pane's program end (fact 51).
-		args = append(args, ";", "set-option", "-w", "-t", "="+session.Name+":", "remain-on-exit",
-			"on")
+		target := "=" + session.Name + ":"
+		args = append(args, ";", setOption, "-w", "-t", target, "remain-on-exit", "on")
 	}
 
 	// tmux prints the IDs once it has made the session, even if a hook of the user's then fails.
@@ -105,8 +109,8 @@ func (s Server) NewSession(ctx context.Context, session Session) error {
 // splits the other panes off the last one in order, tiling the window each time, and titles them.
 func (s Server) fill(ctx context.Context, session Session, window, first string) error {
 	setUp := []string{
-		"set-option", "-w", "-t", window, "pane-border-status", "top", ";",
-		"set-option", "-w", "-t", window, "allow-set-title", "off",
+		setOption, "-w", "-t", window, "pane-border-status", "top", ";",
+		setOption, "-w", "-t", window, "allow-set-title", "off",
 	}
 
 	// new-session keeps its -e entries in the session's environment, for every later pane
