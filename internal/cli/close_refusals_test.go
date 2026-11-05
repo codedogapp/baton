@@ -46,7 +46,7 @@ func TestFeatureCloseRefusesAndChangesNothing(t *testing.T) {
 			args: []string{slug, "--remove-worktree"}, env: orchestratorPane(),
 			session: demo.mainDir,
 			want: "tmux session baton-linked runs in " + demo.mainDir + ", not in the worktree " +
-				"of demo-1, " + demo.linked + ": baton ends only the session that it made",
+				"of demo-1, " + demo.linked + ": baton changes only the sessions that it made",
 		},
 	}
 

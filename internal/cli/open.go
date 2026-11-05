@@ -16,8 +16,9 @@ import (
 const envTmux = "TMUX"
 
 // open opens the repo's orchestrator, in the user's own shell: it makes the orchestrator's tmux
-// session in the repo's main worktree, unless the session is there already, then shows it in the
-// user's terminal (decision 45).
+// session in the repo's main worktree, unless the session is there already, and starts again the
+// teams of the open features (decision 69), then shows the orchestrator's session in the user's
+// terminal (decision 45).
 func open(ctx context.Context, env Env, args []string) error {
 	if err := parse(newFlags(env, "start"), args); err != nil {
 		return err
@@ -44,6 +45,10 @@ func open(ctx context.Context, env Env, args []string) error {
 	}
 
 	if err != nil {
+		return err
+	}
+
+	if err := restore(ctx, env, mainDir); err != nil {
 		return err
 	}
 

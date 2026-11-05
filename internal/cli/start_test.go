@@ -18,17 +18,20 @@ import (
 const self = "/opt/baton/bin/baton"
 
 // fakeTmux stands in for the user's tmux server: it keeps the sessions that baton makes, the ones
-// that it shows and the ones that it ends, and has the sessions in dirs running, until baton ends
-// them.
+// that it shows, the ones whose dead panes it starts again and the ones that it ends, and has the
+// sessions in dirs running, until baton ends them.
 type fakeTmux struct {
-	sessions  []tmux.Session
-	making    func(ctx context.Context) error // What making a session does and returns, if set.
-	dirs      map[string]string               // The folders of the sessions that run already.
-	looking   func()                          // What looking for a session does first, if set.
-	shown     []string                        // The sessions that the user's client switched to.
-	switching error                           // What switching the user's client returns.
-	killed    []string                        // The sessions that baton ended, or tried to.
-	killing   error                           // What ending a session returns.
+	sessions   []tmux.Session
+	making     func(ctx context.Context) error // What making a session does and returns, if set.
+	dirs       map[string]string               // The folders of the sessions that run already.
+	looking    func()                          // What looking for a session does first, if set.
+	shown      []string                        // The sessions that the user's client switched to.
+	switching  error                           // What switching the user's client returns.
+	dead       map[string][]string             // The titles of the dead panes, by session.
+	respawned  []tmux.Session                  // The sessions whose dead panes baton started.
+	respawning error                           // What starting the dead panes again returns.
+	killed     []string                        // The sessions that baton ended, or tried to.
+	killing    error                           // What ending a session returns.
 }
 
 func (fake *fakeTmux) NewSession(ctx context.Context, session tmux.Session) error {
@@ -59,6 +62,18 @@ func (fake *fakeTmux) SwitchClient(_ context.Context, name string) error {
 
 func (*fakeTmux) AttachCommand(name string) []string {
 	return []string{"tmux", "-L", "fake", "attach-session", "-t", "=" + name}
+}
+
+// Respawn starts the session's dead panes, all of them unless it fails, when it starts the first.
+func (fake *fakeTmux) Respawn(_ context.Context, session tmux.Session) ([]string, error) {
+	fake.respawned = append(fake.respawned, session)
+
+	started := fake.dead[session.Name]
+	if fake.respawning != nil {
+		started = started[:min(1, len(started))]
+	}
+
+	return started, fake.respawning
 }
 
 func (fake *fakeTmux) KillSession(_ context.Context, name string) error {
@@ -135,9 +150,14 @@ func TestStartFeature(t *testing.T) {
 		t.Fatalf("baton feature start = %+v, want %+v", got, want)
 	}
 
-	session := tmux.Session{Name: "baton-main-demo-1", Dir: worktree, Panes: []tmux.Pane{
-		rolePane("lead"), rolePane("engineer"), rolePane("qa"), rolePane("reviewer"),
-	}}
+	session := tmux.Session{
+		Name:   "baton-main-demo-1",
+		Dir:    worktree,
+		Remain: true,
+		Panes: []tmux.Pane{
+			rolePane("lead"), rolePane("engineer"), rolePane("qa"), rolePane("reviewer"),
+		},
+	}
 	if !reflect.DeepEqual(fake.sessions, []tmux.Session{session}) {
 		t.Errorf("tmux sessions:\n%+v\nwant:\n%+v", fake.sessions, session)
 	}

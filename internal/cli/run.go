@@ -43,13 +43,14 @@ type Env struct {
 }
 
 // Server is a tmux server, as tmux.Server is: baton makes the sessions of the orchestrator and of
-// the features there, shows the orchestrator's in the user's terminal, and ends a feature's once
-// the feature closes.
+// the features there, shows the orchestrator's in the user's terminal, starts again the dead panes
+// of a feature's, and ends a feature's once the feature closes.
 type Server interface {
 	NewSession(ctx context.Context, session tmux.Session) error
 	SessionDir(ctx context.Context, name string) (string, bool)
 	SwitchClient(ctx context.Context, name string) error
 	AttachCommand(name string) []string
+	Respawn(ctx context.Context, session tmux.Session) ([]string, error)
 	KillSession(ctx context.Context, name string) error
 }
 

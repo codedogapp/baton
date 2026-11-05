@@ -66,14 +66,16 @@ func parseClose(env Env, args []string) (slug string, removing bool, err error) 
 }
 
 // teamRuns reports whether the feature's tmux session runs. It refuses a session of that name in
-// another folder than the feature's worktree, which baton didn't make for the feature.
+// another folder than the feature's worktree, which baton didn't make for the feature, and leaves
+// alone (decision 14).
 func teamRuns(ctx context.Context, sessions Server, feature state.Feature) (bool, error) {
 	name := featureSession(feature.Worktree)
 
 	dir, found := sessions.SessionDir(ctx, name)
 	if found && dir != feature.Worktree {
 		return false, fmt.Errorf("tmux session %s runs in %s, not in the worktree of %s, %s: "+
-			"baton ends only the session that it made", name, dir, feature.Slug, feature.Worktree)
+			"baton changes only the sessions that it made", name, dir, feature.Slug,
+			feature.Worktree)
 	}
 
 	return found, nil

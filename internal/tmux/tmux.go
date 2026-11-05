@@ -34,6 +34,9 @@ type Session struct {
 	Dir string
 	// Panes are tiled in order, and the first one is the active one.
 	Panes []Pane
+	// Remain keeps each pane whose program ends, dead, with what it printed, until Respawn starts
+	// it again. Without it, tmux closes the pane, and ends the session with its last pane.
+	Remain bool
 }
 
 // Pane is a pane of a session.
@@ -68,9 +71,16 @@ func (s Server) NewSession(ctx context.Context, session Session) error {
 	}
 
 	head := []string{"new-session", "-s", session.Name, "-F", "#{window_id} #{pane_id}"}
+	args := session.spawn(session.Panes[0], head...)
+
+	if session.Remain {
+		// In the same call, which tmux runs before it sees the first pane's program end (fact 51).
+		args = append(args, ";", "set-option", "-w", "-t", "="+session.Name+":", "remain-on-exit",
+			"on")
+	}
 
 	// tmux prints the IDs once it has made the session, even if a hook of the user's then fails.
-	out, err := s.run(ctx, session.spawn(session.Panes[0], head...)...)
+	out, err := s.run(ctx, args...)
 	window, first, made := strings.Cut(line(out), " ")
 
 	if err == nil {
@@ -133,10 +143,15 @@ func (s Server) fill(ctx context.Context, session Session, window, first string)
 	return err
 }
 
-// spawn returns the tmux command that starts the pane: detached, in the session's folder, with the
-// pane's environment and command, printing the pane's IDs.
+// spawn returns the tmux command that makes the pane, detached, printing its IDs, and starts it.
 func (session Session) spawn(pane Pane, head ...string) []string {
-	args := slices.Concat(head, []string{"-d", "-P", "-c", text(session.Dir)})
+	return session.start(pane, slices.Concat(head, []string{"-d", "-P"})...)
+}
+
+// start returns the tmux command that starts the pane's command in the session's folder, with the
+// pane's environment.
+func (session Session) start(pane Pane, head ...string) []string {
+	args := slices.Concat(head, []string{"-c", text(session.Dir)})
 	for _, env := range pane.Env {
 		args = append(args, "-e", quote(env))
 	}
