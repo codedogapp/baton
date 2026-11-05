@@ -30,6 +30,9 @@ const (
 	EventPickup   = "pickup"
 	EventQuestion = "question" // The holder asked the orchestrator a question.
 	EventAnswer   = "answer"   // The orchestrator answered it.
+	// EventResume means that the holder's pane started again, and its copilot carries on with
+	// the work that the holder picked up before.
+	EventResume = "resume"
 	// EventDeliver means that baton deliver pushed the feature's branch and opened its pull
 	// request, or commented the lead's final report on it.
 	EventDeliver = "deliver"

@@ -5,7 +5,6 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"testing/synctest"
 
@@ -21,10 +20,13 @@ func TestPaneRefusesAndWritesNothing(t *testing.T) {
 	store := started(t, mainDir, fresh())
 	add(t, store, state.Feature{Slug: "demo-2", Flow: fresh()})
 
-	demo2 := map[string]string{"BATON_ROLE": "lead", "BATON_FEATURE": "demo-2"}
-	if got := run(t, mainDir, demo2, "wait"); got.code != 0 ||
-		!strings.HasPrefix(got.stdout, "Picked up demo-2 as lead: ") {
-		t.Fatalf("the lead's wait in demo-2: %+v", got)
+	closing := state.Entry{Event: state.Event{Kind: state.EventClose, Role: flow.RoleOrchestrator}}
+	if _, err := store.Update("demo-2", closing, func(feature *state.Feature) (err error) {
+		feature.Flow, err = feature.Flow.Close()
+
+		return err
+	}); err != nil {
+		t.Fatal(err)
 	}
 
 	before := snapshot(t, store.Dir)
@@ -108,16 +110,15 @@ func TestPaneRefusesAndWritesNothing(t *testing.T) {
 		},
 		{
 			name: "of another feature", dir: linked,
-			env:    map[string]string{"BATON_ROLE": "lead", "BATON_FEATURE": "demo-3"},
-			stdout: "lead in demo-3: waiting for work.\n",
-			want:   "no feature demo-3\n",
+			env:  map[string]string{"BATON_ROLE": "lead", "BATON_FEATURE": "demo-3"},
+			want: "no feature demo-3\n",
 		},
 		{
-			name:   "of a feature whose work is picked up",
+			name:   "of a closed feature",
 			dir:    linked,
-			env:    demo2,
+			env:    map[string]string{"BATON_ROLE": "lead", "BATON_FEATURE": "demo-2"},
 			stdout: "lead in demo-2: waiting for work.\n",
-			want:   "lead holds demo-2, with no work left to pick up: hand it over before waiting\n",
+			want:   "demo-2 is closed, so no work comes to the lead\n",
 		},
 	}
 

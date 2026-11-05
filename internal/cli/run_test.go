@@ -17,7 +17,7 @@ Commands:
   hook stop      copilot's stop hook: send a pane's copilot that stops too soon back to work
   jira           print a Jira ticket and its comments as Markdown, for the orchestrator's plan
   pane           become the pane's copilot: the orchestrator's, or the role's once it has work
-  status         list the repo's features, with their holder, round and status
+  status         list the repo's features, with their holder, round, status and AI credits
   wait           wait for the role's next work, then pick it up and print it
 
 Run baton <command> -h for the command's flags.

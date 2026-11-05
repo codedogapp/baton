@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"maps"
+	"slices"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -85,7 +86,8 @@ func TestPaneStopsWaiting(t *testing.T) {
 }
 
 // TestPaneReportsACopilotThatFailsToStart fails a pane whose copilot doesn't start. The pickup
-// stays recorded, so no other pane gets the work too.
+// stays recorded, so no other pane gets the work too, and the role's pane, started again, carries
+// on with it in the same session, which copilot then makes (decision 67).
 func TestPaneReportsACopilotThatFailsToStart(t *testing.T) {
 	standIn(t)
 
@@ -102,12 +104,19 @@ func TestPaneReportsACopilotThatFailsToStart(t *testing.T) {
 			stderr: "baton pane: start copilot: exec format error\n",
 		}
 		if got.result != want || len(got.execs) != 1 {
-			t.Errorf("got %+v; want %+v, after a command line", got, want)
+			t.Fatalf("got %+v; want %+v, after a command line", got, want)
 		}
 
 		wantWork(t, store, state.Work{
 			Note: "01-orchestrator-to-lead.md", From: flow.RoleOrchestrator, Picked: true,
 		})
+
+		again := got.execs[0]
+		again.args = slices.Clone(again.args)
+		again.args[len(again.args)-1] = carryingOn + again.args[len(again.args)-1]
+
+		env, _ = inPane(t, mainDir, paneOf(flow.RoleLead))
+		wantCarryOn(t, paneFor(t, env), again)
 	})
 }
 
