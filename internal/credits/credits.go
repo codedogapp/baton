@@ -22,16 +22,19 @@ const recordType = "session.usage_record"
 // nanoPerCredit is the number of nano AIU in an AI credit (fact 8).
 const nanoPerCredit = 1e9
 
-// record is what baton reads of an event: its type, and a usage record's AI credits, in nano AIU.
+// record is what baton reads of an event: its type and, for a usage record, its usage.
 type record struct {
 	Type string `json:"type"`
 	Data struct {
-		Usage struct {
-			CopilotUsage struct {
-				TotalNanoAiu float64 `json:"totalNanoAiu"`
-			} `json:"copilotUsage"`
-		} `json:"usage"`
+		Usage usage `json:"usage"`
 	} `json:"data"`
+}
+
+// usage is what a usage record's model call spent: its AI credits, in nano AIU.
+type usage struct {
+	CopilotUsage struct {
+		TotalNanoAiu float64 `json:"totalNanoAiu"`
+	} `json:"copilotUsage"`
 }
 
 // Spent returns the AI credits that the session in the folder has spent so far: the sum of its
