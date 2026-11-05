@@ -1,22 +1,18 @@
 package cli
 
 import (
-	"cmp"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
-	"uuid"
 
 	"github.com/codedogapp/baton/internal/config"
 	"github.com/codedogapp/baton/internal/flow"
 	"github.com/codedogapp/baton/internal/plugin"
-	"github.com/codedogapp/baton/internal/state"
 )
 
 // cacheFolder is baton's folder in the user's cache folder, which holds the plugin (decision 36).
@@ -36,11 +32,13 @@ const envPath = "PATH"
 // pane becomes the pane's copilot, with the role's settings from the config file (decision 49),
 // and with the folder of baton's own program first on its PATH (decision 62). The orchestrator's
 // copilot starts at once, since the user talks to it. A role's pane waits for the role's first
-// work, then becomes the role's copilot, with that work as its first prompt (decision 38), in a
-// new session whose ID baton keeps (decision 66), and with the belt in its environment (decision
-// 55). It finds copilot, writes the plugin, reads the settings and makes the belt before it waits,
-// so that a pane that can't start copilot never picks up work that nobody would then do. After the
-// wait it checks the plugin again, which a role may have changed meanwhile (decision 53).
+// work, then becomes the role's copilot, with that work as its first prompt (decision 38), in the
+// role's session in the feature, whose ID baton keeps (decision 66), and with the belt in its
+// environment (decision 55); a pane that starts again while its role holds the work that it picked
+// up carries on with that work at once (decision 67). It finds copilot, writes the plugin, reads
+// the settings and makes the belt before it waits, so that a pane that can't start copilot never
+// picks up work that nobody would then do. After the wait it checks the plugin again, which a role
+// may have changed meanwhile (decision 53).
 func pane(ctx context.Context, env Env, args []string) error {
 	if err := parse(newFlags(env, "pane"), args); err != nil {
 		return err
@@ -78,7 +76,7 @@ func pane(ctx context.Context, env Env, args []string) error {
 		return err
 	}
 
-	turn, err := waitForWork(ctx, env, role, slug)
+	turn, err := firstWork(ctx, env, role, slug)
 	if err != nil {
 		return err
 	}
@@ -88,65 +86,6 @@ func pane(ctx context.Context, env Env, args []string) error {
 	}
 
 	return becomeCopilot(env, program, command(role, dir, own, turn), vars)
-}
-
-// firstTurn is the first turn of a role's copilot: its session's ID, and its prompt, the role's
-// first work.
-type firstTurn struct {
-	session uuid.UUID
-	work    string
-}
-
-// waitForWork says that the role waits, waits for the role's work in the feature, then picks it
-// up, as baton wait does, and keeps a new session's ID for the role's copilot in the same change
-// (decision 66). It returns the copilot's first turn. While it waits, it marks the role as
-// waiting, as baton wait does (decision 47), and drops what the user types in the pane; it stops
-// waiting when the pane's terminal ends.
-func waitForWork(ctx context.Context, env Env, role flow.Role, slug string) (firstTurn, error) {
-	store, err := openStore(ctx, env.Dir)
-	if err != nil {
-		return firstTurn{}, err
-	}
-
-	if _, err := fmt.Fprintf(env.Stdout, "%s in %s: waiting for work.\n", role, slug); err != nil {
-		return firstTurn{}, err
-	}
-
-	waiting, stop := context.WithCancelCause(ctx)
-	defer stop(nil)
-
-	go watch(env.Stdin, stop)
-
-	session := uuid.New()
-
-	feature, err := waitFor(
-		waiting,
-		func() (func(), error) { return store.MarkWaiting(slug, role) },
-		func() (state.Feature, error) {
-			return store.Update(slug, pickup(role), starting(role, session))
-		},
-	)
-	if err != nil {
-		return firstTurn{}, err
-	}
-
-	return firstTurn{session, pickupText(store, feature, role)}, nil
-}
-
-// starting returns the change that marks the role's work picked up, as picked does, and keeps the
-// session's ID as the role's, in place of an earlier one.
-func starting(role flow.Role, session uuid.UUID) func(*state.Feature) error {
-	pick := picked(role)
-
-	return func(feature *state.Feature) error {
-		if err := pick(feature); err != nil {
-			return err
-		}
-
-		*feature.Sessions.Of(role) = session
-
-		return nil
-	}
 }
 
 // becomeCopilot replaces baton with copilot, with the command line and the environment.
@@ -193,14 +132,6 @@ func batonCache() (string, error) {
 	}
 
 	return filepath.Join(cache, cacheFolder), nil
-}
-
-// watch reads the pane's terminal, and drops what the user types there, until the terminal's
-// input ends, then stops the wait. Once a terminal is gone, a read of it ends, even in a program
-// that missed the hangup (facts 22 and 25). Ctrl-D ends the input too.
-func watch(terminal io.Reader, stop context.CancelCauseFunc) {
-	_, err := io.Copy(io.Discard, terminal)
-	stop(fmt.Errorf("the terminal's input ended: %w", cmp.Or(err, io.EOF)))
 }
 
 // findable returns the PATH for the pane's copilot, so that the agents' baton commands run the

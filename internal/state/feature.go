@@ -27,7 +27,8 @@ type Feature struct {
 	// Flow is where the feature stands in the flow.
 	Flow flow.State `json:"flow"`
 	// Sessions are the roles' copilot sessions, which their panes start, so that baton can find
-	// each role's events and resume its session (decision 66).
+	// each role's events, and a role's pane that starts again resumes its session (decisions 66
+	// and 67).
 	Sessions Sessions `json:"sessions,omitzero"`
 	// Work is the holder's work: the last note, since each note goes to the holder after the
 	// change that brought it (decision 31).
