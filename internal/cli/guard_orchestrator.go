@@ -117,24 +117,37 @@ func orchestratorCommand(command guard.Command, approval bool) guardOutput {
 	return deny(fmt.Sprintf("%s`%s` %s", stopped, command.Name, orchestratorWhy[command.Kind]))
 }
 
-// sessionFolder returns the copilot session's folder, in which the orchestrator writes its briefs
-// and notes: session-state/<session> in copilot's home folder, which COPILOT_HOME names in the
-// pane, or else .copilot in the user's home folder.
+// sessionFolder returns the folder of the copilot session that the hook's input names, in which
+// the orchestrator writes its briefs and notes.
 func sessionFolder(env Env, session string) (string, error) {
 	// filepath.Base gives "." for "", so an empty ID fails too.
 	if session == "." || session == ".." || session != filepath.Base(session) {
 		return "", fmt.Errorf("read the hook's input: sessionId %q: want a session's ID", session)
 	}
 
-	home := env.Getenv("COPILOT_HOME")
-	if home == "" {
-		user, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("find the home folder: %w", err)
-		}
-
-		home = filepath.Join(user, ".copilot")
+	home, err := copilotHome(env)
+	if err != nil {
+		return "", err
 	}
 
-	return filepath.Join(home, "session-state", session), nil
+	return filepath.Join(home, sessionState, session), nil
+}
+
+// sessionState is the folder in copilot's home folder that holds a folder for each session, named
+// by its ID, with the session's events.
+const sessionState = "session-state"
+
+// copilotHome returns copilot's home folder: the one that COPILOT_HOME names, or else .copilot in
+// the user's home folder.
+func copilotHome(env Env) (string, error) {
+	if home := env.Getenv("COPILOT_HOME"); home != "" {
+		return home, nil
+	}
+
+	user, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("find the home folder: %w", err)
+	}
+
+	return filepath.Join(user, ".copilot"), nil
 }

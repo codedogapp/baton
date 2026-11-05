@@ -54,6 +54,10 @@ baton sends the token to `api.bitbucket.org` alone, and never prints it; git pus
 
 baton finds Bitbucket by `bitbucket.org` in `origin`'s URL alone: a remote with an SSH alias from `~/.ssh/config` in its place, such as `bb:acme/demo.git`, is a GitHub repo to baton, and gh fails after the push. Name `bitbucket.org` in `origin`'s URL instead.
 
+## AI credits
+
+`baton status` lists each feature with its holder, round and status, and the AI credits that its roles have spent so far, in all and for each role, from the events that each role's `copilot` logs in its home folder (`COPILOT_HOME`, or `~/.copilot`). A `-` stands for a role whose `copilot` hasn't started yet, or whose events baton can't find, such as under another `COPILOT_HOME`. The orchestrator's own credits aren't counted, since it serves every feature.
+
 ## Closing a feature
 
 When you're done with a feature, delivered or not, tell the orchestrator to close it, which baton's guard asks you about first, or run `baton feature close <slug>` yourself. baton ends the feature's tmux session, with its team's panes, even mid-work, and keeps its branch and its worktree: add `--remove-worktree` to remove the worktree too, which git refuses while it holds changes that no commit has, and which takes the files that git ignores with it. The closed feature stays in `baton status`, and nothing moves it again. Delete its branch yourself once you no longer need it.

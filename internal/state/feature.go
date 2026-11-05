@@ -5,6 +5,7 @@ package state
 import (
 	"fmt"
 	"strings"
+	"uuid"
 
 	"github.com/codedogapp/baton/internal/flow"
 )
@@ -25,12 +26,41 @@ type Feature struct {
 	PullRequest string `json:"pullRequest,omitempty"`
 	// Flow is where the feature stands in the flow.
 	Flow flow.State `json:"flow"`
+	// Sessions are the roles' copilot sessions, which their panes start, so that baton can find
+	// each role's events and resume its session (decision 66).
+	Sessions Sessions `json:"sessions,omitzero"`
 	// Work is the holder's work: the last note, since each note goes to the holder after the
 	// change that brought it (decision 31).
 	Work Work `json:"work,omitzero"`
 	// Question is the holder's last question to the orchestrator, and its answer once it comes,
 	// until the holder hands the feature over (decision 46).
 	Question Question `json:"question,omitzero"`
+}
+
+// Sessions are the IDs of the copilot sessions of a feature's roles, each one the zero ID until
+// the role's pane starts its copilot.
+type Sessions struct {
+	Lead     uuid.UUID `json:"lead,omitzero"`
+	Engineer uuid.UUID `json:"engineer,omitzero"`
+	QA       uuid.UUID `json:"qa,omitzero"`
+	Reviewer uuid.UUID `json:"reviewer,omitzero"`
+}
+
+// Of returns where the sessions keep the role's session's ID, or nil for the orchestrator, whose
+// session belongs to no feature.
+func (s *Sessions) Of(role flow.Role) *uuid.UUID {
+	switch role {
+	case flow.RoleLead:
+		return &s.Lead
+	case flow.RoleEngineer:
+		return &s.Engineer
+	case flow.RoleQA:
+		return &s.QA
+	case flow.RoleReviewer:
+		return &s.Reviewer
+	default:
+		return nil
+	}
 }
 
 // Work is the note that the holder works from.

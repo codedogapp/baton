@@ -6,11 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strings"
 	"testing"
 	"testing/synctest"
 	"time"
+	"uuid"
 
 	"github.com/codedogapp/baton/internal/cli"
 	"github.com/codedogapp/baton/internal/flow"
@@ -40,7 +40,7 @@ func TestPaneBecomesTheRolesCopilot(t *testing.T) {
 
 		wantCopilot(t, paneFor(t, env), flow.RoleLead, execed{
 			path: copilot,
-			args: copilotLine(flow.RoleLead, pluginIn(t, cache),
+			args: copilotLine(flow.RoleLead, pluginIn(t, cache), sessionOf(t, store, flow.RoleLead),
 				"Picked up demo-1 as lead: round 0 of 3, from orchestrator.\nNote: "+
 					notePath(store, "01-orchestrator-to-lead.md")+"\n"),
 			env: copilotEnv(),
@@ -96,6 +96,7 @@ func TestPaneWaitsForTheRolesWork(t *testing.T) {
 		wantCopilot(t, got, flow.RoleEngineer, execed{
 			path: copilot,
 			args: copilotLine(flow.RoleEngineer, pluginIn(t, cache),
+				sessionOf(t, store, flow.RoleEngineer),
 				"Picked up demo-1 as engineer: round 1 of 3, from lead.\nNote: "+
 					notePath(store, "02-lead-to-engineer.md")+"\n"),
 			env: copilotEnv(),
@@ -198,54 +199,34 @@ func stillWaiting(t *testing.T, engineer <-chan ran) {
 	}
 }
 
-// copilotLine returns the role's copilot command line, with the plugin's folder and the role's
-// work as its first prompt (decisions 7, 9 to 11 and 38).
-func copilotLine(role flow.Role, plugin, work string) []string {
+// copilotLine returns the role's copilot command line, with the plugin's folder, the session's ID
+// and the role's work as its first prompt (decisions 7, 9 to 11, 38 and 66).
+func copilotLine(role flow.Role, plugin, session, work string) []string {
 	return []string{
 		"copilot", "--agent", "baton:" + string(role), "--plugin-dir", plugin,
-		"--model", "claude-opus-5.5", "--allow-all", "--no-ask-user",
+		"--model", "claude-opus-5.5", "--session-id", session, "--allow-all", "--no-ask-user",
 		"--available-tools", "bash", "read_bash", "stop_bash", "list_bash",
 		"view", "create", "edit", "grep", "glob", "web_fetch",
 		"-i", work,
 	}
 }
 
-// copilotEnv returns the environment that a role's copilot gets in a repo whose remotes need the
-// push rules, with none of git's settings in baton's environment (decision 55).
-func copilotEnv(rules ...[2]string) []string {
-	return roleEnv(belt(0, rules...)...)
-}
+// sessionOf returns the ID of the session that the role's pane kept in the feature for its
+// copilot, and fails the test if it kept none (decision 66).
+func sessionOf(t *testing.T, store state.Store, role flow.Role) string {
+	t.Helper()
 
-// roleEnv returns the environment that a role's copilot gets, with the variables: baton's, without
-// its GitHub tokens, with BATON_BIN naming this baton, for the stop hook, the PATH with this
-// baton's folder first, COPILOT_ALLOW_ALL=true, which trusts copilot's folder, and the variables,
-// each in place of the user's own value, since copilot reads the first of two (fact 9, decisions
-// 39, 47, 55 and 62).
-func roleEnv(vars ...string) []string {
-	vars = append([]string{"BATON_BIN=" + self, "PATH=" + selfFirst(), "COPILOT_ALLOW_ALL=true"},
-		vars...)
-
-	return append(withoutVars(slices.Concat(names(vars), githubTokens)...), vars...)
-}
-
-// names returns the variables' names.
-func names(vars []string) []string {
-	names := make([]string, 0, len(vars))
-	for _, variable := range vars {
-		name, _, _ := strings.Cut(variable, "=")
-		names = append(names, name)
+	feature, err := store.Read(slug)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	return names
-}
+	session := *feature.Sessions.Of(role)
+	if session == uuid.Nil() {
+		t.Fatalf("the %s's pane kept no session for its copilot: %+v", role, feature.Sessions)
+	}
 
-// withoutVars returns baton's environment without the variables with the names.
-func withoutVars(names ...string) []string {
-	return slices.DeleteFunc(os.Environ(), func(variable string) bool {
-		name, _, _ := strings.Cut(variable, "=")
-
-		return slices.Contains(names, name)
-	})
+	return session.String()
 }
 
 // pluginName is the name of the plugin's folder in the cache folder (decision 36).

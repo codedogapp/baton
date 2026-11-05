@@ -29,7 +29,7 @@ func TestPaneChecksThePluginAgainAfterTheWait(t *testing.T) {
 
 		wantCopilot(t, got, flow.RoleEngineer, execed{
 			path: copilot,
-			args: copilotLine(flow.RoleEngineer, first+"-1",
+			args: copilotLine(flow.RoleEngineer, first+"-1", sessionOf(t, store, flow.RoleEngineer),
 				"Picked up demo-1 as engineer: round 1 of 3, from lead.\nNote: "+
 					notePath(store, "02-lead-to-engineer.md")+"\n"),
 			env: copilotEnv(),

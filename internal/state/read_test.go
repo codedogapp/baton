@@ -38,7 +38,7 @@ func TestReadIgnoresTheFieldsItDoesntKnow(t *testing.T) {
   "slug": "demo-1",
   "ticket": "DEMO-1",
   "flow": {"holder": "lead", "status": "running", "round": 0, "cap": 3, "extra": 0, "paused": true},
-  "sessions": {"lead": "1"}
+  "labels": ["ui"]
 }`)
 
 	if got, err := store.Read(slug); err != nil || got != started(t) {
@@ -78,6 +78,11 @@ func TestReadAndUpdateRefuseAnInvalidFile(t *testing.T) {
 			"an invalid flow",
 			`{"format": 1, "slug": "demo-1", "flow": {"holder": "boss"}}`,
 			`flow: unknown holder "boss"`,
+		},
+		{
+			"a session's ID that isn't one",
+			`{"format": 1, "slug": "demo-1", ` + lead + `, "sessions": {"qa": "1"}}`,
+			`within "/sessions/qa"`,
 		},
 	}
 
