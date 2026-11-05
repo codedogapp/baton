@@ -26,6 +26,8 @@ type opening struct {
 	made   []tmux.Session // The sessions that baton asked tmux to make.
 	shown  []string       // The sessions that baton switched the user's client to.
 	line   *execed        // The command line that baton gave Env.Exec, if any.
+	// The sessions whose dead panes baton asked tmux to start again.
+	respawned []tmux.Session
 }
 
 // TestStartOpensTheOrchestrator opens the orchestrator from the repo's worktrees, outside tmux and
@@ -151,6 +153,10 @@ func wantOpening(t *testing.T, test opening) {
 
 	if !reflect.DeepEqual(server.sessions, test.made) {
 		t.Errorf("tmux made %+v; want %+v", server.sessions, test.made)
+	}
+
+	if !reflect.DeepEqual(server.respawned, test.respawned) {
+		t.Errorf("tmux started the dead panes of %+v; want %+v", server.respawned, test.respawned)
 	}
 
 	if !slices.Equal(server.shown, test.shown) {

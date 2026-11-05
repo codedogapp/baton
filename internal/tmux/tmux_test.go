@@ -34,6 +34,7 @@ func TestNewSessionTilesTitledPanes(t *testing.T) {
 	for _, option := range []struct{ name, window, global string }{
 		{"pane-border-status", "top", "off"},
 		{"allow-set-title", "off", "on"},
+		{"remain-on-exit", "", "off"},
 	} {
 		window := on(t, srv, "show-options", "-w", "-v", "-t", "=baton-Repo_2-demo-1:",
 			option.name)

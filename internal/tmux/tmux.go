@@ -34,6 +34,9 @@ type Session struct {
 	Dir string
 	// Panes are tiled in order, and the first one is the active one.
 	Panes []Pane
+	// Remain keeps each pane whose program ends, dead, with what it printed, until Respawn starts
+	// it again. Without it, tmux closes the pane, and ends the session with its last pane.
+	Remain bool
 }
 
 // Pane is a pane of a session.
@@ -53,6 +56,10 @@ var (
 	notInName   = regexp.MustCompile(`[^A-Za-z0-9_-]`)
 )
 
+// setOption is tmux's command that sets an option; baton gives it -w and a window, so that it
+// sets the option on that window alone.
+const setOption = "set-option"
+
 // Name returns the text as a session's name, with an underscore for each character that a name
 // can't hold, such as a dot.
 func Name(text string) string {
@@ -68,9 +75,16 @@ func (s Server) NewSession(ctx context.Context, session Session) error {
 	}
 
 	head := []string{"new-session", "-s", session.Name, "-F", "#{window_id} #{pane_id}"}
+	args := session.spawn(session.Panes[0], head...)
+
+	if session.Remain {
+		// In the same call, which tmux runs before it sees the first pane's program end (fact 51).
+		target := "=" + session.Name + ":"
+		args = append(args, ";", setOption, "-w", "-t", target, "remain-on-exit", "on")
+	}
 
 	// tmux prints the IDs once it has made the session, even if a hook of the user's then fails.
-	out, err := s.run(ctx, session.spawn(session.Panes[0], head...)...)
+	out, err := s.run(ctx, args...)
 	window, first, made := strings.Cut(line(out), " ")
 
 	if err == nil {
@@ -95,8 +109,8 @@ func (s Server) NewSession(ctx context.Context, session Session) error {
 // splits the other panes off the last one in order, tiling the window each time, and titles them.
 func (s Server) fill(ctx context.Context, session Session, window, first string) error {
 	setUp := []string{
-		"set-option", "-w", "-t", window, "pane-border-status", "top", ";",
-		"set-option", "-w", "-t", window, "allow-set-title", "off",
+		setOption, "-w", "-t", window, "pane-border-status", "top", ";",
+		setOption, "-w", "-t", window, "allow-set-title", "off",
 	}
 
 	// new-session keeps its -e entries in the session's environment, for every later pane
@@ -133,10 +147,15 @@ func (s Server) fill(ctx context.Context, session Session, window, first string)
 	return err
 }
 
-// spawn returns the tmux command that starts the pane: detached, in the session's folder, with the
-// pane's environment and command, printing the pane's IDs.
+// spawn returns the tmux command that makes the pane, detached, printing its IDs, and starts it.
 func (session Session) spawn(pane Pane, head ...string) []string {
-	args := slices.Concat(head, []string{"-d", "-P", "-c", text(session.Dir)})
+	return session.start(pane, slices.Concat(head, []string{"-d", "-P"})...)
+}
+
+// start returns the tmux command that starts the pane's command in the session's folder, with the
+// pane's environment.
+func (session Session) start(pane Pane, head ...string) []string {
+	args := slices.Concat(head, []string{"-c", text(session.Dir)})
 	for _, env := range pane.Env {
 		args = append(args, "-e", quote(env))
 	}
