@@ -43,6 +43,7 @@ Never report a step as done before `mise run check` has passed, and say which ga
 - Repo: [`codedogapp/baton`](https://github.com/codedogapp/baton), public. Default branch `main`.
 - One step, one branch (`step/<id>`, ids from plan §0) and one PR. The lead squash-merges once CI is green, with an explicit subject and body: `gh pr merge --squash --subject "…" --body "…"`.
 - Renovate's pull requests: the lead squash-merges a green one once its release notes show no breaking change and its pins match their tags, and asks the user about a red one or a major update (the user's OK of 2026-11-03).
+- Releases: a tag `vX.Y.Z` on `main` publishes one, through the `Release` workflow. The user pushes tags, or the lead with the user's yes for that version.
 - Commit messages and PR titles follow Conventional Commits (`feat(flow): …`, `fix: …`, `build: …`, `ci: …`, `docs: …`): an imperative subject of 72 characters or fewer, and a body that says why when it isn't obvious.
 - **No AI attribution.** Never add `Co-authored-by` trailers for Copilot or any other AI agent.
 - Never write close, fix or resolve next to an issue or PR number unless the PR is meant to close it.
@@ -114,6 +115,7 @@ Measure everything we can with lightweight static tools. Thresholds change only 
 | Package names | no `util`, `common`, `helpers`, `misc` or similar names (`api` is allowed), and no clash with a common standard-library package | revive `package-naming` |
 | GitHub workflows | no findings | jactionlint (with shellcheck for `run:` scripts) |
 | Dependencies | current | Renovate (GitHub App) |
+| Release archive | builds for macOS on Apple silicon, and holds the license of Go and of each module built into baton | `mise run dist` |
 | New code overall | quality gate passes | SonarQube Cloud |
 
 The local gates run through `mise run check`. CI runs the same task and, in a parallel job, SonarQube Cloud.

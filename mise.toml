@@ -40,9 +40,41 @@ run = "go-test-coverage --config=.testcoverage.yml"
 description = "Scan the dependencies for known vulnerabilities (govulncheck)"
 run = "govulncheck ./..."
 
+[tasks.dist]
+description = "Build baton for Apple silicon into dist/, in an archive with the licenses of its code"
+shell = "bash -c"
+run = '''
+set -euo pipefail
+rm -rf dist
+mkdir dist
+CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -o dist/baton .
+
+# Go's license, for its runtime and standard library, then that of each module built in.
+notice() {
+  printf '%s %s\n\n' "$1" "$2"
+  cat "$3"
+  printf '\n'
+}
+{
+  printf 'baton is built with Go and the modules below, under the licenses that follow.\n\n'
+  notice Go "$(go env GOVERSION)" "$(go env GOROOT)/LICENSE"
+  go version -m dist/baton | awk '$1 == "dep" { print $2, $3 }' |
+    while read -r module release; do
+      dir=$(go mod download -json "${module}@${release}" | awk -F'"' '$2 == "Dir" { print $4 }')
+      notice "${module}" "${release}" "${dir}/LICENSE"
+    done
+} >dist/THIRD_PARTY_LICENSES
+cp LICENSE dist/
+
+version=$(go version -m dist/baton | awk '$1 == "mod" { print $3 }')
+# macOS's tar would add an AppleDouble file for each file's extended attributes.
+COPYFILE_DISABLE=1 tar -czf "dist/baton-${version}-darwin-arm64.tar.gz" -C dist baton LICENSE \
+  THIRD_PARTY_LICENSES
+'''
+
 [tasks.check]
 description = "Run the local quality gate"
-depends = ["fmt:check", "lint", "lint:actions", "cover", "vuln"]
+depends = ["fmt:check", "lint", "lint:actions", "cover", "vuln", "dist"]
 
 [tasks.sonar-issues]
 description = "List open SonarQube Cloud issues"
